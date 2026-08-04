@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>紅框標註書籤 — 安裝頁</title>
+<style>
+  body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.8;color:#1c2430}
+  h1{color:#c8102e;font-size:1.4rem}
+  a.bm{display:inline-block;background:#c8102e;color:#fff;font-weight:700;padding:10px 22px;border-radius:8px;text-decoration:none;font-size:1.05rem}
+  code,pre{background:#f2f4f6;border-radius:6px}
+  code{padding:1px 6px}
+  pre{padding:14px;overflow:auto;font-size:12px;line-height:1.5}
+  kbd{background:#1c2430;color:#fff;border-radius:4px;padding:1px 7px;font-size:.85em}
+  li{margin:6px 0}
+</style>
+</head>
+<body>
+<h1>紅框標註書籤（截圖用）</h1>
+<p>把下面這顆按鈕<strong>拖曳到書籤列</strong>即可安裝。在任何網頁點一下書籤<strong>啟用</strong>，再點一次書籤即<strong>關閉</strong>（不需要任何熱鍵）。</p>
+<p><a class="bm" id="bm" href="#">🔴 紅框標註</a></p>
+<ul>
+  <li>啟用後：游標移動時，藍色虛線框即時顯示目前指到的元素（附標籤名稱提示）</li>
+  <li><strong>左鍵</strong>：為該元素加上紅框（CSS outline，不改變版面）；再點一次同一元素即取消</li>
+  <li><strong>右鍵</strong>：移除該元素（或其已標註的父層）的紅框</li>
+  <li>右下角會出現控制列：<strong>清除全部</strong>可一次移除所有紅框，<strong>結束</strong>則關閉標註模式（等同再點一次書籤，或按 <kbd>Esc</kbd>）</li>
+  <li>標註模式下所有點擊都會被攔截，連結不會被觸發；結束後恢復正常瀏覽，<strong>已加的紅框會保留</strong>，方便直接截圖</li>
+</ul>
+<p>注意：極少數網站的 CSP 會擋 bookmarklet；iframe 內的內容（如嵌入地圖）標不到。</p>
+<h2>原始碼</h2>
+<pre id="src"></pre>
+<script>
+function roTool(){
+  if (window.__ro) { window.__ro.off(); return; }
+  var box = document.createElement('div');
+  box.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483646;border:2px dashed #0a66c2;background:rgba(10,102,194,.08);display:none';
+  var tip = document.createElement('div');
+  tip.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;background:#1c2430;color:#fff;font:12px/1.5 monospace;padding:2px 8px;border-radius:4px;display:none;max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+  var bar = document.createElement('div');
+  bar.setAttribute('data-ro-ui', '1');
+  bar.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483647;background:#1c2430;color:#fff;font:13px/1.6 sans-serif;padding:8px 12px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);display:flex;gap:10px;align-items:center';
+  bar.innerHTML = '<span style="color:#ff6b81">●</span><span>紅框標註中</span>';
+  function btn(text){
+    var b = document.createElement('button');
+    b.textContent = text;
+    b.setAttribute('data-ro-ui', '1');
+    b.style.cssText = 'all:unset;cursor:pointer;background:#3a4553;color:#fff;font:13px/1 sans-serif;padding:5px 10px;border-radius:5px';
+    bar.appendChild(b);
+    return b;
+  }
+  var clearBtn = btn('清除全部');
+  var offBtn = btn('結束');
+  document.body.append(box, tip, bar);
+  var cur = null;
+  function isUI(el){ return !!(el && el.closest && el.closest('[data-ro-ui]')); }
+  function label(el){
+    return el.tagName.toLowerCase()
+      + (el.id ? '#' + el.id : '')
+      + (el.classList.length ? '.' + [].slice.call(el.classList, 0, 3).join('.') : '');
+  }
+  function hide(){ box.style.display = tip.style.display = 'none'; cur = null; }
+  function move(e){
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el || isUI(el) || el === document.body || el === document.documentElement) return hide();
+    cur = el;
+    var r = el.getBoundingClientRect();
+    box.style.display = 'block';
+    box.style.left = r.left + 'px'; box.style.top = r.top + 'px';
+    box.style.width = r.width + 'px'; box.style.height = r.height + 'px';
+    tip.style.display = 'block';
+    tip.style.left = Math.min(e.clientX + 12, innerWidth - 320) + 'px';
+    tip.style.top = (e.clientY + 18) + 'px';
+    tip.textContent = label(el) + (el.dataset.roMarked ? '  [已標註]' : '');
+  }
+  function on(el){
+    el.dataset.roPrev = el.style.outline || '';
+    el.dataset.roPrevOff = el.style.outlineOffset || '';
+    el.style.outline = '4px solid #c8102e';
+    el.style.outlineOffset = '3px';
+    el.dataset.roMarked = '1';
+  }
+  function off(el){
+    el.style.outline = el.dataset.roPrev;
+    el.style.outlineOffset = el.dataset.roPrevOff;
+    delete el.dataset.roMarked; delete el.dataset.roPrev; delete el.dataset.roPrevOff;
+  }
+  function mark(e){
+    if (isUI(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+    if (!cur) return;
+    cur.dataset.roMarked ? off(cur) : on(cur);
+    tip.textContent = label(cur) + (cur.dataset.roMarked ? '  [已標註]' : '');
+  }
+  function unmark(e){
+    if (isUI(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+    var el = cur && cur.closest('[data-ro-marked]');
+    if (el) { off(el); tip.textContent = label(cur); }
+  }
+  function swallow(e){ if (!isUI(e.target)) { e.preventDefault(); e.stopPropagation(); } }
+  function key(e){ if (e.key === 'Escape') window.__ro.off(); }
+  function clearAll(){
+    [].forEach.call(document.querySelectorAll('[data-ro-marked]'), off);
+  }
+  addEventListener('mousemove', move, true);
+  addEventListener('click', mark, true);
+  addEventListener('contextmenu', unmark, true);
+  addEventListener('mousedown', swallow, true);
+  addEventListener('mouseup', swallow, true);
+  addEventListener('keydown', key, true);
+  addEventListener('scroll', hide, true);
+  clearBtn.addEventListener('click', clearAll);
+  offBtn.addEventListener('click', function(){ window.__ro.off(); });
+  window.__ro = { off: function(){
+    removeEventListener('mousemove', move, true);
+    removeEventListener('click', mark, true);
+    removeEventListener('contextmenu', unmark, true);
+    removeEventListener('mousedown', swallow, true);
+    removeEventListener('mouseup', swallow, true);
+    removeEventListener('keydown', key, true);
+    removeEventListener('scroll', hide, true);
+    box.remove(); tip.remove(); bar.remove(); delete window.__ro;
+  }, clear: clearAll };
+}
+var src = roTool.toString();
+document.getElementById('bm').href = 'javascript:(' + encodeURIComponent(src) + ')()';
+document.getElementById('src').textContent = src;
+</script>
+</body>
+</html>
