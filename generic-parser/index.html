@@ -27,10 +27,11 @@
   <li><strong>複製查詢式</strong>:綠框絕對 XPath + 判斷式;<strong>抽取文字</strong>:藍框元素文字一行一筆複製</li>
   <li>標註模式下所有點擊都會被攔截,連結不會被觸發</li>
 </ul>
-<p>注意:極少數網站的 CSP 會擋 bookmarklet;iframe 內容與 SVG/命名空間元素標不到。設計手稿參見 <code>draft.md</code>。</p>
+<p>注意:極少數網站的 CSP 會擋 bookmarklet;iframe 內容與 SVG/命名空間元素標不到</p>
 <h2>原始碼</h2>
 <pre id="src"></pre>
 <script>
+  //function txt(el){ return el.textContent.replace(/\s+/g, ' ').trim() }
 function gpTool(){
   if (window.__gp) { window.__gp.off(); return; }
   var UI = 'data-gp-ui';
@@ -113,17 +114,17 @@ function gpTool(){
     }
     model = { mode: mode, chain: chain, tail: tail, nodes: nodes, err: err };
     if (!err) {
-      outline(green, '4px solid #0a8f3c', '1px'); greenEl = green;
+      outline(green, '3px solid #0a8f3c', '-2px'); greenEl = green;
       var expr = exprOf();
       try {
         var it = document.evaluate(expr, green, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
         for (var k2 = 0; k2 < it.snapshotLength; k2++) matched.push(it.snapshotItem(k2));
       } catch (ex) { model.err = 'XPath 執行失敗:' + ex.message; }
-      matched.forEach(function(el){ if (reds.indexOf(el) < 0) { outline(el, '2px solid #0a66c2', '1px'); blues.push(el); } });
+      matched.forEach(function(el){ if (reds.indexOf(el) < 0) { outline(el, '3px solid #0a66c2', '-2px'); blues.push(el); } });
     }
     render();
   }
-
+  function txt(el){ return [...el.childNodes].filter(q=>q.nodeType==3).map(w=>w.textContent.trim()).join('') }
   function render(){
     bar.textContent = '';
     function sp(t, css){ var s = document.createElement('span'); s.textContent = t; s.style.cssText = 'all:unset;color:#fff;font:13px/1.6 sans-serif;' + (css || ''); bar.appendChild(s); return s; }
@@ -133,7 +134,6 @@ function gpTool(){
       if (!dis) b.addEventListener('click', fn);
       bar.appendChild(b); return b;
     }
-    sp('●', 'color:#ff6b81'); sp('紅框 ' + reds.length + '/2');
     if (model && model.err) sp(model.err, 'color:#ffb3b3');
     if (model && !model.err) {
       bt('⬆', function(){ if (green.parentElement) { green = green.parentElement; build(true); } }, !green.parentElement);
@@ -143,10 +143,10 @@ function gpTool(){
         sp(ix === model.chain.length && model.mode === 'asym' ? '//' : '/', 'font-family:monospace;color:#9ecbff');
         bt(nodeStr(n), function(){ overrides.set(n.key, (n.si + 1) % n.states.length); build(true); }, n.states.length < 2, n.forced ? '#6b4358' : null);
       });
-      sp('藍框 ' + matched.length, 'color:#9ecbff;margin-left:4px');
+      sp(`選中 ${matched.length} 個:\n${matched.slice(0,10).map(txt).join('\n')}`, 'color:#9ecbff;margin-left:4px;flex-basis:100%;white-space:pre;overflow:hidden;text-overflow:ellipsis');
       bt('複製查詢式', function(){ copyTxt('綠框: ' + absPath(green) + '\n判斷式: ' + exprOf(), '已複製查詢式'); });
       bt('抽取文字', function(){
-        copyTxt(matched.map(function(el){ return el.textContent.replace(/\s+/g, ' ').trim(); }).join('\n'), '已複製 ' + matched.length + ' 筆');
+        copyTxt(matched.map(txt).join('\n'), `已複製 ${matched.length} 筆`);
       });
     }
     bt('清除', function(){ reds.forEach(restore); reds = []; overrides.clear(); green = null; build(); });
@@ -188,7 +188,7 @@ function gpTool(){
     }
     if (reds.length < 2) {
       if (reds.some(function(r){ return r.contains(el) || el.contains(r); })) { toast('與現有紅框巢狀,請框選平行元素'); return; }
-      outline(el, '4px solid #c8102e', '3px'); reds.push(el); build(); return;
+      outline(el, '3px solid #c8102e', '-2px'); reds.push(el); build(); return;
     }
     if (el.contains(reds[0]) && el.contains(reds[1])) { green = el; build(true); return; }
     toast('已有兩個紅框:點紅框取消,或點共同祖先移動綠框');
