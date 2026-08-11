@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>通用資料爬取書籤 — 安裝頁</title>
+<style>
+  body{font-family:'Noto Sans TC','Microsoft JhengHei',sans-serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.8;color:#1c2430}
+  h1{color:#0a8f3c;font-size:1.4rem}
+  a.bm{display:inline-block;background:#0a8f3c;color:#fff;font-weight:700;padding:10px 22px;border-radius:8px;text-decoration:none;font-size:1.05rem}
+  code,pre{background:#f2f4f6;border-radius:6px}
+  code{padding:1px 6px}
+  pre{padding:14px;overflow:auto;font-size:12px;line-height:1.5}
+  kbd{background:#1c2430;color:#fff;border-radius:4px;padding:1px 7px;font-size:.85em}
+  li{margin:6px 0}
+  .sw{display:inline-block;width:.85em;height:.85em;border-radius:3px;vertical-align:-1px;margin-right:2px}
+</style>
+</head>
+<body>
+<h1>通用資料爬取書籤</h1>
+<p>把下面這顆按鈕<strong>拖曳到書籤列</strong>即可安裝。在任何網頁點一下書籤<strong>啟用</strong>,再點一次即<strong>關閉</strong>(或按 <kbd>Esc</kbd>)。</p>
+<p><a class="bm" id="bm" href="#">🟢 通用爬取</a></p>
+<ul>
+  <li><span class="sw" style="background:#e8590c"></span>啟用後,游標移動時<strong>橘色虛線</strong>即時預覽目前指到的元素</li>
+  <li><span class="sw" style="background:#c8102e"></span><strong>左鍵</strong>:標紅框(上限 2,框選兩個「資料意義上同層級」的元素);再點一次取消,<strong>右鍵</strong>也可取消。與現有紅框巢狀會被拒絕</li>
+  <li><span class="sw" style="background:#0a8f3c"></span>紅框滿 2 後自動以<strong>綠框</strong>標出共同祖先、產生查詢判斷式,並以<span class="sw" style="background:#0a66c2;margin-left:4px"></span><strong>藍框</strong>標出所有命中元素</li>
+  <li>下方工具列:<strong>⬆⬇</strong> 逐層移動綠框(點擊頁面上的共同祖先亦可直接跳層);判斷式各節點為 <strong>pill</strong>,點擊循環切換 predicate(中間節點 <code>[n]</code>↔<code>[*]</code>,最末節點 <code>[n]</code>→裸標籤→<code>[*]</code>);無同名 sibling 的節點為 disabled</li>
+  <li><strong>複製查詢式</strong>:綠框絕對 XPath + 判斷式;<strong>抽取文字</strong>:藍框元素文字一行一筆複製</li>
+  <li>標註模式下所有點擊都會被攔截,連結不會被觸發</li>
+</ul>
+<p>注意:極少數網站的 CSP 會擋 bookmarklet;iframe 內容與 SVG/命名空間元素標不到。設計手稿參見 <code>draft.md</code>。</p>
+<h2>原始碼</h2>
+<pre id="src"></pre>
+<script>
+function gpTool(){
+  if (window.__gp) { window.__gp.off(); return; }
+  var UI = 'data-gp-ui';
+  var box = document.createElement('div');
+  box.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483646;border:2px dashed #e8590c;background:rgba(232,89,12,.07);display:none';
+  var tip = document.createElement('div');
+  tip.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483647;background:#1c2430;color:#fff;font:12px/1.5 monospace;padding:2px 8px;border-radius:4px;display:none;max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+  var bar = document.createElement('div');
+  bar.setAttribute(UI, '1');
+  bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:2147483647;background:#1c2430;color:#fff;font:13px/1.6 sans-serif;padding:8px 12px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.3);display:flex;gap:6px;align-items:center;flex-wrap:wrap;max-width:94vw';
+  document.body.append(box, tip, bar);
+
+  var reds = [], green = null, greenEl = null, nca = null, model = null, matched = [], blues = [], cur = null;
+  var overrides = new Map(), prev = new WeakMap(), msgEl = null, msgTimer = 0;
+
+  function isUI(el){ return !!(el && el.closest && el.closest('[' + UI + ']')); }
+  function outline(el, o, off){ if (!prev.has(el)) prev.set(el, [el.style.outline, el.style.outlineOffset]); el.style.outline = o; el.style.outlineOffset = off; }
+  function restore(el){ var p = prev.get(el); if (p) { el.style.outline = p[0]; el.style.outlineOffset = p[1]; prev.delete(el); } }
+  function tagIdx(el){ var i = 1, s = el; while ((s = s.previousElementSibling)) if (s.tagName === el.tagName) i++; return i; }
+  function sibCount(el){
+    if (!el.parentElement) return 1;
+    var n = 0, c = el.parentElement.children;
+    for (var k = 0; k < c.length; k++) if (c[k].tagName === el.tagName) n++;
+    return n || 1;
+  }
+  function segsUp(el, anc){
+    var a = [], e = el;
+    while (e && e !== anc) { a.unshift({ tag: e.tagName.toLowerCase(), idx: tagIdx(e), el: e }); e = e.parentElement; }
+    return a;
+  }
+  function absPath(el){ return '/' + segsUp(el, null).map(function(s){ return s.tag + '[' + s.idx + ']'; }).join('/'); }
+  function toast(t){ if (msgEl) { msgEl.textContent = t; clearTimeout(msgTimer); msgTimer = setTimeout(function(){ if (msgEl) msgEl.textContent = ''; }, 2600); } }
+  function findNCA(a, b){ var e = a.parentElement; while (e && !e.contains(b)) e = e.parentElement; return e; }
+  function nodeStr(n){ var st = n.states[n.si]; return n.tag + (st === 'idx' ? '[' + n.idx + ']' : st === 'star' ? '[*]' : ''); }
+  function exprOf(){
+    if (!model || model.err) return null;
+    var c = model.chain.map(nodeStr).join('/'), t = model.tail.map(nodeStr).join('/');
+    return '.' + (c ? '/' + c : '') + (model.mode === 'asym' ? '//' : '/') + t;
+  }
+
+  function build(keepGreen){
+    blues.forEach(restore); blues = []; matched = [];
+    if (greenEl) { restore(greenEl); greenEl = null; }
+    model = null;
+    if (reds.length < 2) { green = null; render(); return; }
+    nca = findNCA(reds[0], reds[1]);
+    if (!keepGreen || !green || !(green === nca || green.contains(nca))) green = nca;
+    var p1 = segsUp(reds[0], nca), p2 = segsUp(reds[1], nca);
+    var mode = null, tail = [], err = null;
+    var sym = p1.length === p2.length && p1.every(function(s, i){ return s.tag === p2[i].tag; });
+    if (sym) {
+      mode = 'sym';
+      tail = p1.map(function(s, i){ return { tag: s.tag, idx: s.idx, els: [s.el, p2[i].el], forced: s.idx !== p2[i].idx, chain: false }; });
+    } else {
+      var i = p1.length - 1, j = p2.length - 1, S = [];
+      while (i >= 0 && j >= 0 && p1[i].tag === p2[j].tag && p1[i].idx === p2[j].idx) {
+        S.unshift({ tag: p1[i].tag, idx: p1[i].idx, els: [p1[i].el, p2[j].el], chain: false }); i--; j--;
+      }
+      if (!S.length) err = '兩紅框無共同結尾,無法建立查詢,請重新框選';
+      else if (i >= 0 && j >= 0) err = '偵測到兩種以上裝飾父層,暫不支援';
+      else { mode = 'asym'; S.forEach(function(s, k){ s.forced = (k === 0); }); tail = S; }
+    }
+    var chain = segsUp(nca, green).map(function(s){ return { tag: s.tag, idx: s.idx, els: [s.el], forced: false, chain: true }; });
+    var nodes = chain.concat(tail);
+    if (!err) {
+      nodes.forEach(function(n, ix){
+        var terminal = ix === nodes.length - 1;
+        var cnt = Math.max.apply(null, n.els.map(sibCount));
+        var states;
+        if (n.forced) states = terminal ? ['bare', 'star'] : ['star'];
+        else if (cnt <= 1) states = ['idx'];
+        else if (n.chain) states = ['idx', 'star'];
+        else states = terminal ? ['idx', 'bare', 'star'] : ['idx', 'star'];
+        var def = (n.chain && cnt > 1) ? states.indexOf('star') : 0;
+        var key = n.chain ? n.els[0] : 'T' + (nodes.length - 1 - ix);
+        var si = overrides.has(key) ? overrides.get(key) : def;
+        if (si >= states.length) si = def;
+        n.states = states; n.si = si; n.key = key;
+      });
+    }
+    model = { mode: mode, chain: chain, tail: tail, nodes: nodes, err: err };
+    if (!err) {
+      outline(green, '4px solid #0a8f3c', '1px'); greenEl = green;
+      var expr = exprOf();
+      try {
+        var it = document.evaluate(expr, green, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+        for (var k2 = 0; k2 < it.snapshotLength; k2++) matched.push(it.snapshotItem(k2));
+      } catch (ex) { model.err = 'XPath 執行失敗:' + ex.message; }
+      matched.forEach(function(el){ if (reds.indexOf(el) < 0) { outline(el, '2px solid #0a66c2', '1px'); blues.push(el); } });
+    }
+    render();
+  }
+
+  function render(){
+    bar.textContent = '';
+    function sp(t, css){ var s = document.createElement('span'); s.textContent = t; s.style.cssText = 'all:unset;color:#fff;font:13px/1.6 sans-serif;' + (css || ''); bar.appendChild(s); return s; }
+    function bt(t, fn, dis, bg){
+      var b = document.createElement('button'); b.textContent = t; b.setAttribute(UI, '1');
+      b.style.cssText = 'all:unset;cursor:' + (dis ? 'default' : 'pointer') + ';background:' + (dis ? '#2a3340' : (bg || '#3a4553')) + ';color:' + (dis ? '#7d8794' : '#fff') + ';font:13px/1 sans-serif;padding:5px 9px;border-radius:5px;user-select:none';
+      if (!dis) b.addEventListener('click', fn);
+      bar.appendChild(b); return b;
+    }
+    sp('●', 'color:#ff6b81'); sp('紅框 ' + reds.length + '/2');
+    if (model && model.err) sp(model.err, 'color:#ffb3b3');
+    if (model && !model.err) {
+      bt('⬆', function(){ if (green.parentElement) { green = green.parentElement; build(true); } }, !green.parentElement);
+      bt('⬇', function(){ if (green !== nca) { green = model.chain.length ? model.chain[0].els[0] : nca; build(true); } }, green === nca);
+      sp('.', 'font-family:monospace;color:#9ecbff');
+      model.nodes.forEach(function(n, ix){
+        sp(ix === model.chain.length && model.mode === 'asym' ? '//' : '/', 'font-family:monospace;color:#9ecbff');
+        bt(nodeStr(n), function(){ overrides.set(n.key, (n.si + 1) % n.states.length); build(true); }, n.states.length < 2, n.forced ? '#6b4358' : null);
+      });
+      sp('藍框 ' + matched.length, 'color:#9ecbff;margin-left:4px');
+      bt('複製查詢式', function(){ copyTxt('綠框: ' + absPath(green) + '\n判斷式: ' + exprOf(), '已複製查詢式'); });
+      bt('抽取文字', function(){
+        copyTxt(matched.map(function(el){ return el.textContent.replace(/\s+/g, ' ').trim(); }).join('\n'), '已複製 ' + matched.length + ' 筆');
+      });
+    }
+    bt('清除', function(){ reds.forEach(restore); reds = []; overrides.clear(); green = null; build(); });
+    bt('結束', function(){ window.__gp.off(); });
+    msgEl = sp('', 'color:#ffd166');
+  }
+
+  function copyTxt(t, ok){
+    var p = (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(t) : Promise.reject();
+    p.then(function(){ toast(ok); }, function(){ window.prompt('自動複製失敗,請手動複製:', t); });
+  }
+
+  function label(el){
+    return el.tagName.toLowerCase()
+      + (el.id ? '#' + el.id : '')
+      + (el.classList.length ? '.' + [].slice.call(el.classList, 0, 3).join('.') : '');
+  }
+  function hide(){ box.style.display = tip.style.display = 'none'; cur = null; }
+  function move(e){
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el || isUI(el) || el === document.body || el === document.documentElement) return hide();
+    cur = el;
+    var r = el.getBoundingClientRect();
+    box.style.display = 'block';
+    box.style.left = r.left + 'px'; box.style.top = r.top + 'px';
+    box.style.width = r.width + 'px'; box.style.height = r.height + 'px';
+    tip.style.display = 'block';
+    tip.style.left = Math.min(e.clientX + 12, innerWidth - 320) + 'px';
+    tip.style.top = (e.clientY + 18) + 'px';
+    tip.textContent = label(el);
+  }
+  function mark(e){
+    if (isUI(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+    var el = cur; if (!el) return;
+    if (reds.indexOf(el) >= 0) {
+      restore(el); reds = reds.filter(function(r){ return r !== el; });
+      overrides.clear(); green = null; build(); return;
+    }
+    if (reds.length < 2) {
+      if (reds.some(function(r){ return r.contains(el) || el.contains(r); })) { toast('與現有紅框巢狀,請框選平行元素'); return; }
+      outline(el, '4px solid #c8102e', '3px'); reds.push(el); build(); return;
+    }
+    if (el.contains(reds[0]) && el.contains(reds[1])) { green = el; build(true); return; }
+    toast('已有兩個紅框:點紅框取消,或點共同祖先移動綠框');
+  }
+  function rmark(e){
+    if (isUI(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+    if (!cur) return;
+    var r = null;
+    for (var k = 0; k < reds.length; k++) if (reds[k] === cur || reds[k].contains(cur)) r = reds[k];
+    if (r) { restore(r); reds = reds.filter(function(x){ return x !== r; }); overrides.clear(); green = null; build(); }
+  }
+  function swallow(e){ if (!isUI(e.target)) { e.preventDefault(); e.stopPropagation(); } }
+  function key(e){ if (e.key === 'Escape') window.__gp.off(); }
+  addEventListener('mousemove', move, true);
+  addEventListener('click', mark, true);
+  addEventListener('contextmenu', rmark, true);
+  addEventListener('mousedown', swallow, true);
+  addEventListener('mouseup', swallow, true);
+  addEventListener('keydown', key, true);
+  addEventListener('scroll', hide, true);
+  window.__gp = { off: function(){
+    removeEventListener('mousemove', move, true);
+    removeEventListener('click', mark, true);
+    removeEventListener('contextmenu', rmark, true);
+    removeEventListener('mousedown', swallow, true);
+    removeEventListener('mouseup', swallow, true);
+    removeEventListener('keydown', key, true);
+    removeEventListener('scroll', hide, true);
+    reds.forEach(restore); blues.forEach(restore); if (greenEl) restore(greenEl);
+    box.remove(); tip.remove(); bar.remove(); delete window.__gp;
+  } };
+  render();
+}
+var src = gpTool.toString();
+document.getElementById('bm').href = 'javascript:(' + encodeURIComponent(src) + ')()';
+document.getElementById('src').textContent = src;
+</script>
+</body>
+</html>
