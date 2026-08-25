@@ -124,7 +124,7 @@ function gpTool(){
     }
     render();
   }
-  function txt(el){ return [...el.childNodes].filter(q=>q.nodeType==3).map(w=>w.textContent.trim()).join('') }
+  function txt(el){ return [...el.childNodes].filter(q=>q.nodeType==Node.TEXT_NODE).map(w=>w.textContent.trim()).join('') }
   function render(){
     bar.textContent = '';
     function sp(t, css){ var s = document.createElement('span'); s.textContent = t; s.style.cssText = 'all:unset;color:#fff;font:13px/1.6 sans-serif;' + (css || ''); bar.appendChild(s); return s; }
