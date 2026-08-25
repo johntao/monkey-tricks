@@ -163,7 +163,7 @@ function gpTool(){
     }
     render();
   }
-  function txt(el){ return [].slice.call(el.childNodes).filter(function(q){ return q.nodeType === 3; }).map(function(w){ return w.textContent.trim(); }).join(''); }
+  function getTxt(el){ return [...el.childNodes].filter(q=q.nodeType === 3).map(q=>q.textContent.trim()).join(''); }
 
   /* ---------------- 深入擷取:共用工具 ---------------- */
   function blank(s){ return !String(s).trim().replace(/[\u00AD\u200B-\u200F\u2060-\u2064\uFEFF]/g, ''); }
@@ -364,9 +364,9 @@ function gpTool(){
         sp(ix === model.chain.length && model.mode === 'asym' ? '//' : '/', MONO + 'color:' + TH.accent);
         bt(nodeStr(n), function(){ overrides.set(n.key, (n.si + 1) % n.states.length); build(true); }, n.states.length < 2, n.forced ? TH.forced : null);
       });
-      sp('選中 ' + matched.length + ' 個:\n' + matched.slice(0, 10).map(txt).join('\n'), 'color:' + TH.accent + ';margin-left:4px;flex-basis:100%;white-space:pre;overflow:hidden;text-overflow:ellipsis');
+      sp('選中 ' + matched.length + ' 個:\n' + matched.slice(0, 10).map(getTxt).join('\n'), 'color:' + TH.accent + ';margin-left:4px;flex-basis:100%;white-space:pre;overflow:hidden;text-overflow:ellipsis');
       bt('複製查詢式', function(){ copyTxt('綠框: ' + absPath(green) + '\n判斷式: ' + exprOf(), '已複製查詢式'); });
-      bt('抽取文字', function(){ copyTxt(matched.map(txt).join('\n'), '已複製 ' + matched.length + ' 筆'); });
+      bt('抽取文字', function(){ copyTxt(matched.map(getTxt).join('\n'), '已複製 ' + matched.length + ' 筆'); });
       var can = matched.indexOf(reds[0]) >= 0;
       var db = bt('深入', openDlg, !can);
       if (!can) db.title = '紅框不在命中結果內,請調整最末 pill';
