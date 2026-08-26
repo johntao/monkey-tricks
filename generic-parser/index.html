@@ -163,7 +163,23 @@ function gpTool(){
     }
     render();
   }
-  function getTxt(el){ return [...el.childNodes].filter(q=q.nodeType === 3).map(q=>q.textContent.trim()).join(''); }
+  /* ---------------- 1D 取值模式 ---------------- */
+  var TXTMODES = [
+    { label:'文字', tip:'innerText:所見即所得的文字,排除隱藏內容與 script/style', spec:'innerText',
+      get:function(el){ return el.innerText; } },
+    { label:'直屬', tip:'只取直屬文字節點,不展開巢狀元素', spec:"直屬文字節點 join('')",
+      get:function(el){ return [].slice.call(el.childNodes).filter(function(q){ return q.nodeType === 3; }).map(function(q){ return q.data; }).join(''); } },
+    { label:'標記', tip:'innerHTML:連標籤一起輸出', spec:'innerHTML',
+      get:function(el){ return el.innerHTML; } }
+  ];
+  var txtMode = 0;
+  function norm(s){ return String(s).replace(/\s+/g, ' ').trim(); }
+  function getTxt(el){ return norm(TXTMODES[txtMode].get(el)); }
+  function queryText(){
+    return '綠框: ' + absPath(green) + '\n判斷式: ' + exprOf()
+         + '\n取值: ' + TXTMODES[txtMode].spec
+         + '\n空白: \\s+ → 單一空格,前後 trim';
+  }
 
   /* ---------------- 深入擷取:共用工具 ---------------- */
   function blank(s){ return !String(s).trim().replace(/[\u00AD\u200B-\u200F\u2060-\u2064\uFEFF]/g, ''); }
@@ -364,8 +380,9 @@ function gpTool(){
         sp(ix === model.chain.length && model.mode === 'asym' ? '//' : '/', MONO + 'color:' + TH.accent);
         bt(nodeStr(n), function(){ overrides.set(n.key, (n.si + 1) % n.states.length); build(true); }, n.states.length < 2, n.forced ? TH.forced : null);
       });
-      sp('選中 ' + matched.length + ' 個:\n' + matched.slice(0, 10).map(getTxt).join('\n'), 'color:' + TH.accent + ';margin-left:4px;flex-basis:100%;white-space:pre;overflow:hidden;text-overflow:ellipsis');
-      bt('複製查詢式', function(){ copyTxt('綠框: ' + absPath(green) + '\n判斷式: ' + exprOf(), '已複製查詢式'); });
+      sp('選中 ' + matched.length + ' 個:\n' + matched.slice(0, 10).map(function(el){ return clip(getTxt(el), 120); }).join('\n'), 'color:' + TH.accent + ';margin-left:4px;flex-basis:100%;white-space:pre;overflow:hidden;text-overflow:ellipsis');
+      bt('複製查詢式', function(){ copyTxt(queryText(), '已複製查詢式'); });
+      bt(TXTMODES[txtMode].label, function(){ txtMode = (txtMode + 1) % TXTMODES.length; render(); }).title = TXTMODES[txtMode].tip;
       bt('抽取文字', function(){ copyTxt(matched.map(getTxt).join('\n'), '已複製 ' + matched.length + ' 筆'); });
       var can = matched.indexOf(reds[0]) >= 0;
       var db = bt('深入', openDlg, !can);
