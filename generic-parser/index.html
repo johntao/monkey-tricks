@@ -24,7 +24,8 @@
 <h2>找記錄集</h2>
 <ul>
   <li><span class="sw" style="background:#e8590c"></span>啟用後,游標移動時<strong>橘色虛線</strong>即時預覽目前指到的元素</li>
-  <li><span class="sw" style="background:#c8102e"></span><strong>左鍵</strong>:標紅框(上限 2,框選兩個「資料意義上同層級」的元素);再點一次取消,<strong>右鍵</strong>也可取消。與現有紅框巢狀會被拒絕</li>
+  <li><span class="sw" style="background:#c8102e"></span><strong>左鍵</strong>:標紅框(上限 2,框選兩個「資料意義上同層級」的元素);<strong>右鍵</strong>取消。與現有紅框巢狀會被拒絕</li>
+  <li><strong>左鍵點已標記的紅框</strong>(或其後代):展開<strong>祖先選單</strong> — 一排 <code>tag[n] › tag[n]</code> pills,點任一顆把該紅框搬到那一層(最右邊那顆是原始位置,即復歸原點);hover 預覽該層範圍。兩紅框的上升層數不一致而且補得回來時,會多出一顆 <strong>⇄</strong> 一鍵把另一框補齊。<kbd>Esc</kbd> 先關選單、再按才結束工具</li>
   <li><span class="sw" style="background:#0a8f3c"></span>紅框滿 2 後自動以<strong>綠框</strong>標出共同祖先、產生查詢判斷式,並以<span class="sw" style="background:#0a66c2;margin-left:4px"></span><strong>藍框</strong>標出所有命中元素</li>
   <li>下方工具列:<strong>⬆⬇</strong> 逐層移動綠框(點擊頁面上的共同祖先亦可直接跳層);判斷式各節點為 <strong>pill</strong>,點擊循環切換 predicate(中間節點 <code>[n]</code>↔<code>[*]</code>,最末節點 <code>[n]</code>→裸標籤→<code>[*]</code>);無同名 sibling 的節點為 disabled</li>
   <li><strong>複製查詢式</strong>:綠框絕對 XPath + 判斷式;<strong>抽取文字</strong>:藍框元素直屬文字一行一筆</li>
@@ -71,20 +72,23 @@ function gpTool(){
   var box = document.createElement('div');
   var tip = document.createElement('div');
   var bar = document.createElement('div');
+  var menu = document.createElement('div');
   var dlg = document.createElement('dialog');
-  bar.setAttribute(UI, '1'); dlg.setAttribute(UI, '1');
+  var menuRed = null, previewEl = null;
+  bar.setAttribute(UI, '1'); menu.setAttribute(UI, '1'); dlg.setAttribute(UI, '1');
   function paintChrome(){
     box.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483646;border:2px dashed #e8590c;background:rgba(232,89,12,.07);display:' + (box.style.display === 'block' ? 'block' : 'none');
     tip.style.cssText = RS + MONO + 'position:fixed;pointer-events:none;z-index:2147483647;background:' + TH.bg + ';color:' + TH.fg + ';font-size:12px;padding:2px 8px;border-radius:4px;border:1px solid ' + TH.line + ';display:' + (tip.style.display === 'block' ? 'block' : 'none') + ';max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
     bar.style.cssText = RS + 'position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:2147483647;background:' + TH.bg + ';color:' + TH.fg + ';padding:8px 12px;border-radius:8px;border:1px solid ' + TH.line + ';box-shadow:' + TH.sh + ';display:flex;gap:6px;align-items:center;flex-wrap:wrap;max-width:94vw';
+    menu.style.cssText = RS + 'position:fixed;left:0;top:0;z-index:2147483647;background:' + TH.bg + ';color:' + TH.fg + ';padding:5px 7px;border-radius:8px;border:1px solid ' + TH.line + ';box-shadow:' + TH.sh + ';display:' + (menuRed ? 'flex' : 'none') + ';gap:3px;align-items:center;flex-wrap:wrap;max-width:94vw';
     dlg.style.cssText = RS + 'position:fixed;inset:0;margin:auto;width:min(760px,92vw);max-width:92vw;max-height:80vh;height:auto;padding:0;border:1px solid ' + TH.line + ';border-radius:10px;background:' + TH.bg + ';color:' + TH.fg + ';box-shadow:' + TH.sh + ';overflow:hidden';
   }
   paintChrome();
-  document.body.append(box, tip, bar, dlg);
+  document.body.append(box, tip, bar, menu, dlg);
 
   /* ---------------- 既有:紅/綠/藍 ---------------- */
   var reds = [], green = null, greenEl = null, nca = null, model = null, matched = [], blues = [], cur = null;
-  var overrides = new Map(), prev = new WeakMap(), msgEl = null, msgTimer = 0;
+  var overrides = new Map(), origins = new Map(), prev = new WeakMap(), msgEl = null, msgTimer = 0;
 
   function isUI(el){ return !!(el && el.closest && el.closest('[' + UI + ']')); }
   function outline(el, o, off){ if (!prev.has(el)) prev.set(el, [el.style.outline, el.style.outlineOffset]); el.style.outline = o; el.style.outlineOffset = off; }
@@ -111,14 +115,9 @@ function gpTool(){
     return '.' + (c ? '/' + c : '') + (model.mode === 'asym' ? '//' : '/') + t;
   }
 
-  function build(keepGreen){
-    blues.forEach(restore); blues = []; matched = [];
-    if (greenEl) { restore(greenEl); greenEl = null; }
-    model = null;
-    if (reds.length < 2) { green = null; render(); return; }
-    nca = findNCA(reds[0], reds[1]);
-    if (!keepGreen || !green || !(green === nca || green.contains(nca))) green = nca;
-    var p1 = segsUp(reds[0], nca), p2 = segsUp(reds[1], nca);
+  /* 純計算:不碰 DOM、只讀 overrides,供 build 與同步鈕試算共用 */
+  function computeModel(r0, r1, ncaRef, greenRef){
+    var p1 = segsUp(r0, ncaRef), p2 = segsUp(r1, ncaRef);
     var mode = null, tail = [], err = null;
     var sym = p1.length === p2.length && p1.every(function(s, i){ return s.tag === p2[i].tag; });
     if (sym) {
@@ -133,7 +132,7 @@ function gpTool(){
       else if (i >= 0 && j >= 0) err = '偵測到兩種以上裝飾父層,暫不支援';
       else { mode = 'asym'; S.forEach(function(s, k){ s.forced = (k === 0); }); tail = S; }
     }
-    var chain = segsUp(nca, green).map(function(s){ return { tag: s.tag, idx: s.idx, els: [s.el], forced: false, chain: true }; });
+    var chain = segsUp(ncaRef, greenRef).map(function(s){ return { tag: s.tag, idx: s.idx, els: [s.el], forced: false, chain: true }; });
     var nodes = chain.concat(tail);
     if (!err) {
       nodes.forEach(function(n, ix){
@@ -151,8 +150,18 @@ function gpTool(){
         n.states = states; n.si = si; n.key = key;
       });
     }
-    model = { mode: mode, chain: chain, tail: tail, nodes: nodes, err: err };
-    if (!err) {
+    return { mode: mode, chain: chain, tail: tail, nodes: nodes, err: err };
+  }
+
+  function build(keepGreen){
+    blues.forEach(restore); blues = []; matched = [];
+    if (greenEl) { restore(greenEl); greenEl = null; }
+    model = null;
+    if (reds.length < 2) { green = null; render(); return; }
+    nca = findNCA(reds[0], reds[1]);
+    if (!keepGreen || !green || !(green === nca || green.contains(nca))) green = nca;
+    model = computeModel(reds[0], reds[1], nca, green);
+    if (!model.err) {
       outline(green, '3px solid #0a8f3c', '-2px'); greenEl = green;
       var expr = exprOf();
       try {
@@ -389,9 +398,10 @@ function gpTool(){
       if (!can) db.title = '紅框不在命中結果內,請調整最末 pill';
     }
     bt('◐', function(){ isDark = !isDark; TH = isDark ? DARK : LIGHT; paintChrome(); render(); if (dlg.open) renderDlg(); });
-    bt('清除', function(){ reds.forEach(restore); reds = []; overrides.clear(); green = null; build(); });
+    bt('清除', function(){ closeMenu(); reds.forEach(restore); reds = []; origins.clear(); overrides.clear(); green = null; build(); });
     bt('結束', function(){ window.__gp.off(); });
     msgEl = sp('', 'color:' + TH.warn);
+    if (menuRed) renderMenu();
   }
 
   /* ---------------- modal ---------------- */
@@ -582,6 +592,113 @@ function gpTool(){
     body.appendChild(mk('pre', RS + MONO + 'font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:44vh;overflow:auto;background:' + TH.panel + ';border:1px solid ' + TH.line + ';border-radius:6px;padding:8px;color:' + TH.fg, clip(t, 4000)));
   }
 
+  /* ---------------- 紅框調層 ---------------- */
+  /* 紅框只能沿 parentElement 鏈移動,所以可走的位置必定在 segsUp(origin) 上。
+     天花板:不得包住另一個紅框(紅框不可巢狀);單一紅框時止於 body 的直接子元素。 */
+  function redChain(el){
+    var origin = origins.get(el) || el, other = null;
+    for (var i = 0; i < reds.length; i++) if (reds[i] !== el) other = reds[i];
+    var out = [], e = origin;
+    while (e && e !== document.body && e !== document.documentElement) {
+      if (other && e.contains(other)) break;
+      out.unshift(e); e = e.parentElement;
+    }
+    return out;
+  }
+  function offsetOf(el, chain){ return chain.length - 1 - chain.indexOf(el); }
+
+  /* 同步鈕:以 origin 為基準的上升層數對齊,純推導,不存旗標 */
+  function syncTarget(){
+    if (reds.length < 2) return null;
+    var c0 = redChain(reds[0]), c1 = redChain(reds[1]);
+    var o0 = offsetOf(reds[0], c0), o1 = offsetOf(reds[1], c1);
+    if (o0 < 0 || o1 < 0 || o0 === o1) return null;
+    var i = o0 > o1 ? 1 : 0, c = i ? c1 : c0;
+    var ix = c.length - 1 - Math.max(o0, o1);
+    if (ix < 0) return null;
+    var t = c[ix];
+    var a = i ? reds[0] : t, b = i ? t : reds[1];
+    var n2 = findNCA(a, b);
+    if (!n2) return null;
+    var g = (green && (green === n2 || green.contains(n2))) ? green : n2;
+    var m = computeModel(a, b, n2, g);
+    if (m.err) return null;
+    return { i: i, el: t, steps: Math.abs(o0 - o1) };
+  }
+
+  function moveRed(i, target){
+    if (!reds[i] || reds[i] === target) return;
+    var old = reds[i], origin = origins.get(old) || old;
+    restore(old);
+    blues.forEach(restore); blues = [];          /* 目標可能正是藍框,先清再上色 */
+    origins.delete(old);
+    outline(target, '3px solid #c8102e', '-2px');
+    reds[i] = target; origins.set(target, origin);
+    var dead = [];
+    overrides.forEach(function(v, k){ if (typeof k === 'string') dead.push(k); });
+    dead.forEach(function(k){ overrides.delete(k); });   /* tail 鍵從尾端倒數,搬層即錯位 */
+    if (menuRed === old) menuRed = target;
+    build(true);
+  }
+
+  function openMenu(el){ menuRed = el; renderMenu(); }
+  function closeMenu(){ if (!menuRed && menu.style.display === 'none') return; menuRed = null; previewEl = null; menu.style.display = 'none'; hide(); }
+
+  function drawPreview(el){
+    previewEl = el;
+    var r = el.getBoundingClientRect();
+    box.style.display = 'block';
+    box.style.left = r.left + 'px'; box.style.top = r.top + 'px';
+    box.style.width = r.width + 'px'; box.style.height = r.height + 'px';
+    tip.style.display = 'block';
+    tip.style.left = Math.max(0, Math.min(r.left, innerWidth - 320)) + 'px';
+    tip.style.top = Math.max(0, Math.min(r.bottom + 4, innerHeight - 26)) + 'px';
+    tip.textContent = label(el);
+  }
+  function hoverPreview(b, el){
+    b.addEventListener('mouseenter', function(){ drawPreview(el); });
+    b.addEventListener('mouseleave', function(){ previewEl = null; hide(); });
+  }
+
+  function placeMenu(){
+    var r = menuRed.getBoundingClientRect(), m = menu.getBoundingClientRect();
+    var left = Math.max(4, Math.min(r.left, innerWidth - m.width - 4));
+    var top = r.top - m.height - 6;
+    if (top < 4) top = Math.min(r.bottom + 6, innerHeight - m.height - 4);
+    menu.style.left = left + 'px'; menu.style.top = Math.max(4, top) + 'px';
+  }
+
+  function renderMenu(){
+    var i = menuRed ? reds.indexOf(menuRed) : -1;
+    if (i < 0) { closeMenu(); return; }
+    menu.textContent = ''; menu.style.display = 'flex';
+    var chain = redChain(menuRed);
+    chain.forEach(function(el, ix){
+      if (ix) menu.appendChild(mk('span', MONO + 'font-size:12px;color:' + TH.mute, '\u203a'));
+      var on = el === menuRed;
+      var b = mk('button', MONO + 'font-size:12px;cursor:' + (on ? 'default' : 'pointer') + ';background:' + (on ? TH.accent : TH.btn) + ';color:' + (on ? TH.bg : TH.fg) + ';line-height:1;padding:5px 8px;border-radius:5px;user-select:none;white-space:nowrap',
+                   el.tagName.toLowerCase() + '[' + tagIdx(el) + ']');
+      if (!on) { b.addEventListener('click', function(){ moveRed(i, el); }); hoverPreview(b, el); }
+      menu.appendChild(b);
+    });
+    function div(){ menu.appendChild(mk('span', 'width:1px;align-self:stretch;background:' + TH.line + ';margin:0 4px')); }
+    var sy = syncTarget();
+    if (sy) {
+      div();
+      var sb = dbt('\u21c4 \u53e6\u4e00\u6846\u4e5f\u4e0a\u79fb ' + sy.steps + ' \u5c64', function(){ moveRed(sy.i, sy.el); }, false, TH.ok);
+      sb.style.color = TH.bg;
+      hoverPreview(sb, sy.el);
+      menu.appendChild(sb);
+    }
+    div();
+    menu.appendChild(dbt('\u2715', function(){
+      var r = menuRed; closeMenu();
+      restore(r); origins.delete(r); reds = reds.filter(function(x){ return x !== r; });
+      overrides.clear(); green = null; build();
+    }));
+    placeMenu();
+  }
+
   /* ---------------- 頁面互動 ---------------- */
   function label(el){
     return el.tagName.toLowerCase()
@@ -592,6 +709,7 @@ function gpTool(){
   function move(e){
     if (dlg.open) return hide();
     var el = document.elementFromPoint(e.clientX, e.clientY);
+    if (previewEl && isUI(el)) return;            /* pill 預覽鎖定,別被游標微動擦掉 */
     if (!el || isUI(el) || el === document.body || el === document.documentElement) return hide();
     cur = el;
     var r = el.getBoundingClientRect();
@@ -606,17 +724,17 @@ function gpTool(){
   function mark(e){
     if (dlg.open || isUI(e.target)) return;
     e.preventDefault(); e.stopPropagation();
+    if (menuRed) { closeMenu(); return; }        /* 選單開著:只關,吃掉這一下 */
     var el = cur; if (!el) return;
-    if (reds.indexOf(el) >= 0) {
-      restore(el); reds = reds.filter(function(r){ return r !== el; });
-      overrides.clear(); green = null; build(); return;
-    }
+    var own = null;
+    for (var k = 0; k < reds.length; k++) if (reds[k] === el || reds[k].contains(el)) own = reds[k];
+    if (own) { openMenu(own); return; }
     if (reds.length < 2) {
-      if (reds.some(function(r){ return r.contains(el) || el.contains(r); })) { toast('與現有紅框巢狀,請框選平行元素'); return; }
-      outline(el, '3px solid #c8102e', '-2px'); reds.push(el); build(); return;
+      if (reds.some(function(r){ return el.contains(r); })) { toast('與現有紅框巢狀,請框選平行元素'); return; }
+      outline(el, '3px solid #c8102e', '-2px'); reds.push(el); origins.set(el, el); build(); return;
     }
     if (el.contains(reds[0]) && el.contains(reds[1])) { green = el; build(true); return; }
-    toast('已有兩個紅框:點紅框取消,或點共同祖先移動綠框');
+    toast('已有兩個紅框:點紅框開調層選單,或點共同祖先移動綠框');
   }
   function rmark(e){
     if (dlg.open || isUI(e.target)) return;
@@ -624,17 +742,22 @@ function gpTool(){
     if (!cur) return;
     var r = null;
     for (var k = 0; k < reds.length; k++) if (reds[k] === cur || reds[k].contains(cur)) r = reds[k];
-    if (r) { restore(r); reds = reds.filter(function(x){ return x !== r; }); overrides.clear(); green = null; build(); }
+    if (r) {
+      if (menuRed === r) closeMenu();
+      restore(r); origins.delete(r); reds = reds.filter(function(x){ return x !== r; });
+      overrides.clear(); green = null; build();
+    }
   }
   function swallow(e){ if (!dlg.open && !isUI(e.target)) { e.preventDefault(); e.stopPropagation(); } }
-  function key(e){ if (e.key === 'Escape' && !dlg.open) window.__gp.off(); }
+  function key(e){ if (e.key !== 'Escape' || dlg.open) return; if (menuRed) closeMenu(); else window.__gp.off(); }
   addEventListener('mousemove', move, true);
   addEventListener('click', mark, true);
   addEventListener('contextmenu', rmark, true);
   addEventListener('mousedown', swallow, true);
   addEventListener('mouseup', swallow, true);
   addEventListener('keydown', key, true);
-  addEventListener('scroll', hide, true);
+  function onScroll(){ closeMenu(); hide(); }
+  addEventListener('scroll', onScroll, true);
   window.__gp = { off: function(){
     removeEventListener('mousemove', move, true);
     removeEventListener('click', mark, true);
@@ -642,10 +765,10 @@ function gpTool(){
     removeEventListener('mousedown', swallow, true);
     removeEventListener('mouseup', swallow, true);
     removeEventListener('keydown', key, true);
-    removeEventListener('scroll', hide, true);
+    removeEventListener('scroll', onScroll, true);
     reds.forEach(restore); blues.forEach(restore); if (greenEl) restore(greenEl);
     if (dlg.open) dlg.close();
-    box.remove(); tip.remove(); bar.remove(); dlg.remove(); delete window.__gp;
+    box.remove(); tip.remove(); bar.remove(); menu.remove(); dlg.remove(); delete window.__gp;
   } };
   render();
 }
