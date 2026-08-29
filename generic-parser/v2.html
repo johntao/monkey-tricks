@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>通用擷取 v2 — 沙盒</title>
+<style>
+:root{
+  --bg:#fff; --fg:#1c2430; --mute:#5b6672; --faint:#9aa3ad;
+  --line:#d7dce2; --panel:#f2f4f6; --btn:#e3e7ec;
+  --red:#c8102e; --green:#0a8f3c; --blue:#0a66c2; --orange:#e8590c;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif;
+     color:var(--fg);background:var(--bg);line-height:1.6}
+
+/* ---------- 沙盒 chrome ---------- */
+header.sandbox{position:sticky;top:0;z-index:100;display:flex;gap:18px;align-items:center;
+  padding:10px 18px;background:var(--panel);border-bottom:1px solid var(--line);font-size:14px}
+header.sandbox .sp{flex:1}
+header.sandbox label{display:flex;gap:8px;align-items:center;cursor:pointer;user-select:none}
+.switch{position:relative;display:inline-block;width:2.6rem;height:1.3rem;flex:0 0 auto}
+.switch input{position:absolute;opacity:0;width:0;height:0}
+.switch .track{position:absolute;inset:0;background:#c3cad2;border-radius:1rem;transition:background .18s}
+.switch .thumb{position:absolute;top:2px;left:2px;width:calc(1.3rem - 4px);height:calc(1.3rem - 4px);
+  background:#fff;border-radius:50%;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch input:checked + .track{background:var(--green)}
+.switch input:checked + .track .thumb{transform:translateX(1.3rem)}
+select{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:#fff}
+.hint{color:var(--mute);font-size:13px}
+
+main{padding:24px 18px 60vh;max-width:820px}
+
+/* ---------- 乾淨 fixture ---------- */
+.panel-box{max-width:720px;border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.panel-box h2{margin:0 0 2px;font-size:1.05rem}
+.panel-note{color:var(--mute);font-size:13px;margin-bottom:12px}
+.grid{display:flex;gap:28px}
+.col{list-style:none;margin:0;padding:0;flex:1}
+.item{margin:0 0 6px}
+.card{border:1px solid var(--line);border-radius:8px}
+.link{display:block;padding:8px 12px;text-decoration:none;color:var(--fg)}
+.link:hover{background:var(--panel)}
+
+/* ---------- google fixture 讓它有形狀 ---------- */
+#fx .EIaa9b{display:flex;gap:20px}
+#fx .M6HR1c{font-weight:700;margin-bottom:10px}
+#fx .AJLUJb{flex:1}
+#fx .b2Rnsc{margin-bottom:6px}
+#fx .ngTNl{display:block;padding:8px 12px;border:1px solid var(--line);border-radius:8px;
+  text-decoration:none;color:var(--fg)}
+#fx .B2VR9{display:flex;align-items:center;gap:8px}
+#fx .wyccme{flex:1}
+#fx .mgAbYb{font-weight:700;font-size:1.05rem}
+#fx svg{width:16px;height:16px;fill:var(--mute)}
+
+/* ---------- 工具 overlay ---------- */
+#gp-overlay{position:fixed;inset:0;pointer-events:none;z-index:2147483000}
+#gp-overlay .bx{position:fixed;pointer-events:none}
+.bx.hover{border:2px dashed var(--orange);background:rgba(232,89,12,.07)}
+.bx.red{border:3px solid var(--red)}
+.bx.green{border:3px solid var(--green)}
+.bx.blue{border:3px solid var(--blue)}
+/* 差異預覽:將新增 = 藍虛線;將消失 = 降透明 + 虛線;綠框預覽 = 綠虛線 */
+.bx.blue-add{border:3px dashed var(--blue);background:rgba(10,102,194,.12)}
+.bx.blue-drop{border:3px dashed var(--blue);opacity:.25}
+.bx.green-pv{border:3px dashed var(--green);background:rgba(10,143,60,.08)}
+#gp-tip{position:fixed;z-index:2147483100;pointer-events:none;display:none;
+  font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:4px;
+  background:#1c2430;color:#fff;white-space:nowrap;max-width:60vw;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- 面板 ---------- */
+#gp-panel{position:fixed;right:16px;bottom:16px;z-index:2147483200;display:none;
+  width:min(1000px,60vw);max-height:82vh;background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.22);font-size:13px;
+  flex-direction:column;overflow:hidden}
+#gp-panel.on{display:flex}
+#gp-panel .head{display:flex;gap:10px;align-items:center;padding:7px 12px;cursor:move;
+  background:var(--panel);border-bottom:1px solid var(--line);user-select:none}
+#gp-panel .head b{font-weight:700}
+#gp-panel .head .sp{flex:1}
+#gp-panel .body{flex:1 1 auto;overflow:auto;padding:0}
+#gp-panel .foot{flex:0 0 auto;border-top:1px solid var(--line);background:var(--panel);
+  padding:8px 12px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}
+#gp-panel.min .body,#gp-panel.min .foot{display:none}
+button.gp{font:inherit;font-size:12px;line-height:1;padding:5px 9px;border:1px solid var(--line);
+  border-radius:5px;background:var(--btn);color:var(--fg);cursor:pointer}
+button.gp:hover:not(:disabled){background:#d5dbe2}
+button.gp:disabled{opacity:.45;cursor:default}
+
+/* ---------- 表格 ---------- */
+table.gp{width:100%;border-collapse:collapse;font-size:12px}
+table.gp th{position:sticky;top:0;background:var(--panel);text-align:left;font-weight:600;
+  color:var(--mute);padding:5px 10px;border-bottom:1px solid var(--line);white-space:nowrap;z-index:1}
+table.gp td{padding:4px 10px;border-bottom:1px solid #edf0f3;vertical-align:top;line-height:1.45}
+table.gp .lv{font-family:var(--mono);white-space:nowrap;color:var(--fg)}
+table.gp tr.above td{color:var(--faint)}
+table.gp tr.above .lv{color:var(--faint)}
+table.gp tr.fold td{background:#fafbfc;color:var(--mute)}
+table.gp .seg{font-family:var(--mono)}
+table.gp .txt{color:var(--faint);font-size:11px;display:block;max-width:190px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+table.gp .why1{display:block}
+table.gp .why2{display:block;color:var(--mute)}
+table.gp .whycol{font-size:11.5px;line-height:1.4}
+table.gp tr.fold td,table.gp tr.above td{padding-top:2px;padding-bottom:2px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:0}
+/* 摺疊列的查詢式必須完整顯示 —— 逐列讀下來要等於完整 XPath */
+table.gp tr.fold td.exprcell{white-space:normal;overflow:visible;word-break:break-all;max-width:none}
+table.gp .anchor{color:var(--green);font-weight:700}
+td.clk{cursor:pointer}
+td.clk:hover{background:rgba(10,143,60,.10);box-shadow:inset 2px 0 0 var(--green)}
+tr.fold td.clk:hover{background:rgba(10,102,194,.08);box-shadow:inset 2px 0 0 var(--blue)}
+.homemark{color:var(--green);font-weight:700;margin-left:5px}
+
+/* 綠框橫線 */
+tr.greenline td{background:rgba(10,143,60,.07);border-top:2px solid var(--green);
+  border-bottom:2px solid var(--green);font-family:var(--mono);color:var(--green);font-weight:700}
+
+/* 二態開關(pass1 靜態) */
+.sw2{display:flex;align-items:center;gap:5px;font-family:var(--mono);white-space:nowrap}
+.sw2 .end{display:inline-flex;flex-direction:column;align-items:center;line-height:1.25;opacity:.45}
+.sw2 .end .n{font-size:10.5px;color:var(--mute);font-family:var(--mono)}
+.sw2 .end.on{opacity:1;font-weight:700;color:var(--blue)}
+.sw2 .end.on .n{color:var(--blue)}
+.sw2:not(.locked) .end,.sw2:not(.locked) .knob{cursor:pointer}
+.sw2:not(.locked) .end:hover{opacity:1;text-decoration:underline}
+.sw2 .knob{position:relative;width:2.1rem;height:1.05rem;border-radius:1rem;background:#c3cad2;flex:0 0 auto}
+.sw2 .knob i{position:absolute;top:2px;left:2px;width:calc(1.05rem - 4px);height:calc(1.05rem - 4px);
+  background:#fff;border-radius:50%;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .15s}
+.sw2.right .knob i{transform:translateX(1.05rem)}
+.sw2.locked .knob{background:#e0e4e9}
+.sw2.locked .knob i{background:#c3cad2;box-shadow:none}
+.lockmark{color:var(--faint);font-size:11px;margin-left:4px}
+
+#gp-expr{font-family:var(--mono);font-size:12px;word-break:break-all;flex:1 1 320px;color:var(--fg)}
+#gp-count{white-space:nowrap;font-weight:700;color:var(--blue)}
+#gp-msg{color:var(--orange);flex-basis:100%;min-height:1.2em}
+</style>
+</head>
+<body>
+
+<header class="sandbox">
+  <label>
+    <span class="switch"><input type="checkbox" id="tool-on"><span class="track"><span class="thumb"></span></span></span>
+    <span>擷取模式</span>
+  </label>
+  <label>假資料
+    <select id="fixture">
+      <option value="clean">乾淨 fixture(語意標籤)</option>
+      <option value="google">google 搜尋結果(真實)</option>
+    </select>
+  </label>
+  <span class="sp"></span>
+  <span class="hint" id="phase-hint">關閉中</span>
+</header>
+
+<main id="fx"></main>
+
+<template id="fx-clean">
+<section class="panel-box">
+  <h2>推薦讀物</h2>
+  <div class="panel-note">共 8 筆,依熱門度排序</div>
+  <div class="panel-body">
+    <div class="grid">
+      <ul class="col">
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 是什麼</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 教學</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 工具</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">Python 單元測試</span></a></div></li>
+      </ul>
+      <ul class="col">
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 怎麼寫</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 範例</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 意思</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 case</span></a></div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+</template>
+
+<template id="fx-google">
+<div id="bres"><div class="ULSxyf"><div class="MjjYud"><div data-abe="" data-hveid="CC0QAA" data-ved="2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ26YDegQILRAA"><div class="oIk2Cb"><div class="M6HR1c PJI6ge adDDi"><span class="mgAbYb RES9jf YC72Wc IFnjPb JGD2rd" aria-level="2" role="heading">其他人也搜尋了以下項目</span><span class="YR2tRd"></span></div><div class="y6Uyqe"><div class="EIaa9b"><div class="AJLUJb"><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CC4QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%98%AF+%E4%BB%80%E9%BA%BC&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAguEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>是 什麼</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CEQQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%95%99%E5%AD%B8&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAhEEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>教學</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CD4QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E5%B7%A5%E5%85%B7&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg-EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>工具</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CD0QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Python+unit+test&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg9EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd"><b>Python</b> unit test</span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div></div><div class="AJLUJb"><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDwQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%80%8E%E9%BA%BC+%E5%AF%AB&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg8EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>怎麼 寫</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDgQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E7%AF%84%E4%BE%8B&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg4EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>範例</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDAQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%84%8F%E6%80%9D&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAgwEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>意思</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CC8QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+case&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAgvEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>case</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div></div></div></div></div></div></div></div></div>
+</template>
+
+<div id="gp-overlay"></div>
+<div id="gp-tip"></div>
+
+<div id="gp-panel">
+  <div class="head">
+    <b>擷取</b>
+    <span id="gp-phase">框選中 0/2</span>
+    <span class="sp"></span>
+    <button class="gp" id="btn-txtmode">文字</button>
+    <button class="gp" id="btn-clear">清除</button>
+    <button class="gp" id="btn-min">－</button>
+  </div>
+  <div class="body"><table class="gp"><thead><tr>
+    <th style="width:14%">層級</th><th style="width:19%">紅1</th><th style="width:19%">紅2</th>
+    <th style="width:20%">查詢式</th><th style="width:28%">為何</th>
+  </tr></thead><tbody id="gp-rows"></tbody></table></div>
+  <div class="foot">
+    <button class="gp" id="btn-copy" disabled>複製查詢式</button>
+    <button class="gp" id="btn-extract" disabled>抽取文字</button>
+    <span id="gp-expr">—</span>
+    <span id="gp-count"></span>
+    <span id="gp-msg"></span>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ═══════════ 小工具 ═══════════ */
+const UI = el => !!(el && el.closest && el.closest('#gp-panel,#gp-overlay,#gp-tip,header.sandbox'));
+const $ = s => document.querySelector(s);
+const clip = (s, n) => { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+const norm = s => String(s).replace(/\s+/g, ' ').trim();
+const esc = s => String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+
+const TXTMODES = [
+  { label: '文字', tip: 'innerText:所見即所得', spec: 'innerText', get: el => el.innerText },
+  { label: '直屬', tip: '只取直屬文字節點,不展開巢狀', spec: "直屬文字節點 join('')",
+    get: el => [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.data).join('') },
+  { label: '標記', tip: 'innerHTML:連標籤一起輸出', spec: 'innerHTML', get: el => el.innerHTML }
+];
+let txtMode = 0;
+const getTxt = el => norm(TXTMODES[txtMode].get(el));
+
+const tagIdx = el => { let i = 1, s = el; while ((s = s.previousElementSibling)) if (s.tagName === el.tagName) i++; return i; };
+const sibCount = el => {
+  if (!el.parentElement) return 1;
+  let n = 0; for (const c of el.parentElement.children) if (c.tagName === el.tagName) n++;
+  return n || 1;
+};
+const segsUp = (el, anc) => {
+  const a = []; let e = el;
+  while (e && e !== anc) { a.unshift({ tag: e.tagName.toLowerCase(), idx: tagIdx(e), el: e }); e = e.parentElement; }
+  return a;
+};
+const absPath = el => '/' + segsUp(el, null).map(s => s.tag + '[' + s.idx + ']').join('/');
+const findNCA = (a, b) => { let e = a.parentElement; while (e && !e.contains(b)) e = e.parentElement; return e; };
+const label = el => el.tagName.toLowerCase()
+  + (el.id ? '#' + el.id : '')
+  + (el.classList.length ? '.' + [...el.classList].slice(0, 2).join('.') : '');
+
+/* 無獨立文字:沒有直屬非空文字節點。不看子元素數量 —— 跟「有沒有選擇」「有沒有資訊」都無關 */
+const noOwnText = el => {
+  for (const n of el.childNodes) if (n.nodeType === 3 && n.data.trim()) return false;
+  return true;
+};
+
+/* ═══════════ 狀態 ═══════════ */
+let on = false, phase = 'idle';        /* idle | select | tune */
+let reds = [], green = null, nca = null, model = null, matched = [];
+let hoverEl = null;
+let overrides = new Map();             /* 代表元素 → 'idx' | 'bare' */
+let expanded = new Set();              /* 已展開的摺疊段(以段首元素為鍵) */
+let preview = null;                    /* {add:Set, drop:Set, green:el|null} */
+
+/* ═══════════ 演算法(二態,無 [*]) ═══════════
+   'idx' → tag[n](只抓第 n 個) / 'bare' → tag(全部抓)
+   forced(兩邊序號相異)→ 鎖 bare;sibCount<=1 → 鎖 idx;chain 節點 → 預設 bare
+   覆寫一律以「代表元素」為鍵:tail 用紅1 路徑上的元素、chain 用該祖先本身。
+   兩者都不隨綠框移動而改變,所以綠框上下移動時使用者的選擇完整保留。 */
+const segStr = n => n.tag + (n.state === 'idx' ? '[' + n.idx + ']' : '');
+
+function computeModel(r0, r1, ncaRef, greenRef) {
+  const p1 = segsUp(r0, ncaRef), p2 = segsUp(r1, ncaRef);
+  let mode = null, tail = [], err = null;
+  const sym = p1.length === p2.length && p1.every((s, i) => s.tag === p2[i].tag);
+
+  if (sym) {
+    mode = 'sym';
+    tail = p1.map((s, i) => ({ tag: s.tag, idx: s.idx, idxB: p2[i].idx,
+      els: [s.el, p2[i].el], forced: s.idx !== p2[i].idx, chain: false }));
+  } else {
+    let i = p1.length - 1, j = p2.length - 1;
+    const S = [];
+    while (i >= 0 && j >= 0 && p1[i].tag === p2[j].tag && p1[i].idx === p2[j].idx) {
+      S.unshift({ tag: p1[i].tag, idx: p1[i].idx, idxB: p2[j].idx, els: [p1[i].el, p2[j].el], chain: false });
+      i--; j--;
+    }
+    if (!S.length) err = '兩紅框沒有共同結尾,無法建立查詢 — 請重新框選';
+    else if (i >= 0 && j >= 0) err = '偵測到兩種以上裝飾父層,暫不支援(v2 處理)';
+    else { mode = 'asym'; S.forEach((s, k) => { s.forced = (k === 0); }); tail = S; }
+  }
+
+  const chain = segsUp(ncaRef, greenRef).map(s => ({ tag: s.tag, idx: s.idx, idxB: s.idx,
+    els: [s.el], forced: false, chain: true }));
+  const nodes = chain.concat(tail);
+
+  if (!err) nodes.forEach((n, ix) => {
+    n.terminal = ix === nodes.length - 1;
+    n.cnt = Math.max(...n.els.map(sibCount));
+    n.key = n.els[0];
+    if (n.cnt <= 1)    { n.state = 'idx';  n.locked = true;  n.reason = 'only'; }
+    else if (n.forced) { n.state = 'bare'; n.locked = true;  n.reason = 'differ'; }
+    else if (n.chain)  { n.state = 'bare'; n.locked = false; n.reason = 'chain'; }
+    else               { n.state = 'idx';  n.locked = false; n.reason = 'same'; }
+    if (!n.locked && overrides.has(n.key)) n.state = overrides.get(n.key);
+  });
+
+  return { mode, chain, tail, nodes, err };
+}
+
+const exprOf = m => {
+  if (!m || m.err) return null;
+  const c = m.chain.map(segStr).join('/');
+  const t = m.tail.map(segStr).join('/');
+  return '.' + (c ? '/' + c : '') + (m.mode === 'asym' ? '//' : '/') + t;
+};
+
+function evalIn(expr, root) {
+  const out = [];
+  if (!expr || !root) return out;
+  try {
+    const it = document.evaluate(expr, root, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+    for (let i = 0; i < it.snapshotLength; i++) out.push(it.snapshotItem(i));
+  } catch (e) { return null; }
+  return out;
+}
+
+/* 邊際試算:只改一個節點的狀態,其餘維持現狀 */
+function countIf(node, state) {
+  const save = node.state; node.state = state;
+  const r = evalIn(exprOf(model), green);
+  node.state = save;
+  return r ? r.length : 0;
+}
+function matchesIf(node, state) {
+  const save = node.state; node.state = state;
+  const r = evalIn(exprOf(model), green);
+  node.state = save;
+  return r || [];
+}
+/* 綠框移到 g 之後會命中什麼(唯讀試算) */
+function matchesIfGreen(g) {
+  if (reds.length < 2) return [];
+  const m = computeModel(reds[0], reds[1], nca, g);
+  if (m.err) return [];
+  return evalIn(exprOf(m), g) || [];
+}
+
+/* ═══════════ overlay ═══════════ */
+const ov = $('#gp-overlay'), tipEl = $('#gp-tip');
+let boxes = [];
+
+function paintBoxes() {
+  ov.textContent = '';
+  const f = document.createDocumentFragment();
+  for (const b of boxes) {
+    const r = b.el.getBoundingClientRect();
+    const p = b.pad || 0;
+    const d = document.createElement('div');
+    d.className = 'bx ' + b.kind;
+    d.style.left = (r.left - p) + 'px';
+    d.style.top = (r.top - p) + 'px';
+    d.style.width = (r.width + p * 2) + 'px';
+    d.style.height = (r.height + p * 2) + 'px';
+    f.appendChild(d);
+  }
+  ov.appendChild(f);
+}
+function rebuildBoxes() {
+  boxes = [];
+  if (hoverEl) boxes.push({ el: hoverEl, kind: 'hover', pad: 0 });
+  if (green) boxes.push({ el: green, kind: 'green', pad: 2 });
+  if (preview && preview.green && preview.green !== green)
+    boxes.push({ el: preview.green, kind: 'green-pv', pad: 2 });
+  for (const el of matched) {
+    const drop = preview && preview.drop.has(el);
+    boxes.push({ el, kind: drop ? 'blue-drop' : 'blue', pad: 5 });
+  }
+  if (preview) for (const el of preview.add) boxes.push({ el, kind: 'blue-add', pad: 5 });
+  for (const el of reds) boxes.push({ el, kind: 'red', pad: 0 });
+  paintBoxes();
+}
+let raf = 0;
+const schedule = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; paintBoxes(); }); };
+addEventListener('scroll', schedule, true);
+addEventListener('resize', schedule);
+
+function setPreview(next, gEl) {
+  const cur = new Set(matched);
+  const nx = new Set(next);
+  const add = new Set(), drop = new Set();
+  for (const el of nx) if (!cur.has(el)) add.add(el);
+  for (const el of cur) if (!nx.has(el)) drop.add(el);
+  preview = { add, drop, green: gEl || null };
+  rebuildBoxes();
+}
+function clearPreview() { if (!preview) return; preview = null; rebuildBoxes(); }
+
+/* ═══════════ 面板渲染 ═══════════ */
+const panel = $('#gp-panel'), rowsEl = $('#gp-rows');
+function td(html, cls) {
+  const c = document.createElement('td');
+  if (cls) c.className = cls;
+  if (html instanceof Node) c.appendChild(html); else c.innerHTML = html;
+  return c;
+}
+function toast(t) {
+  const m = $('#gp-msg'); m.textContent = t;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { if (m.textContent === t) m.textContent = ''; }, 2800);
+}
+
+/* 二態開關:兩端 = XPath 字面 + 該端的邊際命中數 */
+function swCell(node) {
+  const wrap = document.createElement('span');
+  wrap.className = 'sw2' + (node.state === 'bare' ? ' right' : '') + (node.locked ? ' locked' : '');
+  const mk = (state, text) => {
+    const e = document.createElement('span');
+    e.className = 'end' + (node.state === state ? ' on' : '');
+    e.innerHTML = '<span>' + esc(text) + '</span>';
+    if (!node.locked) {
+      const n = document.createElement('span');
+      n.className = 'n'; n.textContent = countIf(node, state);
+      e.appendChild(n);
+      e.addEventListener('mouseenter', () => setPreview(matchesIf(node, state)));
+      e.addEventListener('mouseleave', clearPreview);
+      e.addEventListener('click', () => { overrides.set(node.key, state); clearPreview(); rebuild(true); });
+    }
+    return e;
+  };
+  const knob = document.createElement('span');
+  knob.className = 'knob'; knob.innerHTML = '<i></i>';
+  if (!node.locked) {
+    const other = node.state === 'idx' ? 'bare' : 'idx';
+    knob.addEventListener('mouseenter', () => setPreview(matchesIf(node, other)));
+    knob.addEventListener('mouseleave', clearPreview);
+    knob.addEventListener('click', () => { overrides.set(node.key, other); clearPreview(); rebuild(true); });
+  }
+  wrap.append(mk('idx', node.tag + '[' + node.idx + ']'), knob, mk('bare', node.tag));
+  if (node.locked) {
+    const l = document.createElement('span'); l.className = 'lockmark'; l.textContent = '鎖';
+    wrap.appendChild(l);
+  }
+  return wrap;
+}
+
+function why(n) {
+  switch (n.reason) {
+    case 'differ': return ['紅1 在第 ' + n.idx + ' 個、紅2 在第 ' + n.idxB + ' 個',
+                           '位置不同 → 指不出共同序號,只能全抓'];
+    case 'only':   return ['這一層只有一個', '指不指定序號都一樣'];
+    default: {
+      const a = countIf(n, 'idx'), b = countIf(n, 'bare');
+      const head = n.reason === 'chain' ? '綠框往上移新增的一層' : '兩邊都在第 ' + n.idx + ' 個';
+      if (a === b) return [head, '兩邊都是 ' + a + ' 筆 — 這個開關切了沒有作用'];
+      return [head, '只抓第 ' + n.idx + ' 個是 ' + a + ' 筆,全抓是 ' + b + ' 筆'];
+    }
+  }
+}
+
+const elOf = it => it.el || (it.els && it.els[0]);
+
+/* 摺疊:同名兄弟 = 1(沒有選擇餘地)且無獨立文字(沒有自己的資訊)→ 併成一列。
+   末節永不摺(它是紅框本身);單獨一列不摺(摺了只是把名字換成「⋯1層⋯」);
+   已展開的段落原樣攤開。 */
+function foldRuns(items, isNode) {
+  const runs = [];
+  let run = null;
+  items.forEach((it, i) => {
+    const el = elOf(it);
+    const last = isNode && i === items.length - 1;
+    const foldable = !last && sibCount(el) <= 1 && noOwnText(el);
+    if (foldable) { if (!run) { run = { fold: true, items: [] }; runs.push(run); } run.items.push(it); }
+    else { run = null; runs.push({ fold: false, item: it }); }
+  });
+  const out = [];
+  for (const r of runs) {
+    if (!r.fold) { out.push(r); continue; }
+    if (r.items.length < 2) { out.push({ fold: false, item: r.items[0] }); continue; }
+    if (expanded.has(elOf(r.items[0]))) { for (const it of r.items) out.push({ fold: false, item: it, wasFold: true }); continue; }
+    out.push(r);
+  }
+  return out;
+}
+
+/* 綠框可跳到的目標:層級格點擊 + hover 預覽 */
+function greenTarget(cell, el) {
+  cell.classList.add('clk');
+  cell.title = '把綠框移到這一層';
+  cell.addEventListener('mouseenter', () => setPreview(matchesIfGreen(el), el));
+  cell.addEventListener('mouseleave', clearPreview);
+  cell.addEventListener('click', () => { green = el; clearPreview(); rebuild(true); });
+  return cell;
+}
+function foldToggle(cell, key, n) {
+  cell.classList.add('clk');
+  cell.title = expanded.has(key) ? '收合這 ' + n + ' 層' : '展開這 ' + n + ' 層';
+  cell.addEventListener('click', () => {
+    if (expanded.has(key)) expanded.delete(key); else expanded.add(key);
+    render();
+  });
+  return cell;
+}
+
+function render() {
+  $('#gp-phase').textContent = phase === 'tune' ? '調校中' : '框選中 ' + reds.length + '/2';
+  $('#phase-hint').textContent = !on ? '關閉中'
+    : phase === 'tune' ? '調校階段 — 滑鼠已還給頁面' : '框選階段 — 點兩個看起來同層級的元素';
+  $('#btn-txtmode').textContent = TXTMODES[txtMode].label;
+  $('#btn-txtmode').title = TXTMODES[txtMode].tip;
+  const ready = reds.length === 2 && model && !model.err;
+  $('#btn-copy').disabled = !ready; $('#btn-extract').disabled = !ready;
+
+  rowsEl.textContent = '';
+  if (!(model && model.err)) $('#gp-msg').textContent = '';
+  else $('#gp-msg').textContent = model.err;
+
+  if (!reds.length) {
+    const tr = document.createElement('tr');
+    const c = td('<span style="color:var(--mute)">點頁面上的元素標第一個紅框</span>');
+    c.colSpan = 5; tr.appendChild(c); rowsEl.appendChild(tr);
+    $('#gp-expr').textContent = '—'; $('#gp-count').textContent = '';
+    return;
+  }
+
+  /* ── 綠框以上(灰列,可點跳綠框)── */
+  const anchor = green || reds[0];
+  const above = segsUp(anchor, null).slice(0, -1);
+  for (const g of foldRuns(above, false)) {
+    const tr = document.createElement('tr');
+    tr.className = 'above' + (g.fold ? ' fold' : '');
+    if (g.fold) {
+      tr.appendChild(foldToggle(td('⋯ ' + g.items.length + ' 層 ⋯', 'lv'), elOf(g.items[0]), g.items.length));
+      tr.appendChild(td('…')); tr.appendChild(td('…')); tr.appendChild(td('—'));
+      tr.appendChild(td(g.items.length + ' 層單傳,無選擇 · 點層級展開', 'whycol'));
+    } else {
+      const s = g.item;
+      const cell = td(esc(label(s.el)), 'lv');
+      tr.appendChild(green && reds.length === 2 ? greenTarget(cell, s.el) : cell);
+      const v = '<span class="seg">' + s.tag + '[' + s.idx + ']</span>';
+      tr.appendChild(td(v)); tr.appendChild(td(v)); tr.appendChild(td('—'));
+      tr.appendChild(td(green && reds.length === 2 ? '點層級 → 綠框移到這層' : '', 'whycol'));
+    }
+    rowsEl.appendChild(tr);
+  }
+
+  /* ── 綠框橫線 ── */
+  if (green) {
+    const tr = document.createElement('tr');
+    tr.className = 'greenline';
+    const c = td('綠框 ' + esc(label(green))
+      + (green === nca ? '<span class="homemark">⌂ 原始位置</span>' : ''));
+    c.colSpan = 5; tr.appendChild(c); rowsEl.appendChild(tr);
+  }
+
+  /* ── 只有一個紅框:先把紅1 的路徑攤出來 ── */
+  if (reds.length < 2) {
+    const tail = segsUp(reds[0], null).slice(above.length);
+    for (const g of foldRuns(tail, true)) {
+      const tr = document.createElement('tr');
+      if (g.fold) {
+        tr.className = 'fold';
+        tr.appendChild(foldToggle(td('⋯ ' + g.items.length + ' 層 ⋯', 'lv'), elOf(g.items[0]), g.items.length));
+        tr.appendChild(td('…')); tr.appendChild(td('—')); tr.appendChild(td('—'));
+        tr.appendChild(td(g.items.length + ' 層單傳,無選擇', 'whycol'));
+      } else {
+        const s = g.item;
+        tr.appendChild(td(esc(label(s.el)), 'lv'));
+        tr.appendChild(td('<span class="seg">' + s.tag + '[' + s.idx + ']</span>'
+          + '<span class="txt">' + esc(clip(getTxt(s.el), 40)) + '</span>'));
+        tr.appendChild(td('<span style="color:var(--faint)">待選</span>'));
+        tr.appendChild(td('—')); tr.appendChild(td(''));
+      }
+      rowsEl.appendChild(tr);
+    }
+    $('#gp-expr').textContent = '—'; $('#gp-count').textContent = '';
+    $('#gp-msg').textContent = '再選一個看起來同層級的元素';
+    return;
+  }
+
+  if (model.err) { $('#gp-expr').textContent = '—'; $('#gp-count').textContent = ''; return; }
+
+  /* ── 綠框以下(查詢式節點)── */
+  const lastChain = model.chain.length ? model.chain[model.chain.length - 1].els[0] : null;
+  for (const g of foldRuns(model.nodes, true)) {
+    const tr = document.createElement('tr');
+    if (g.fold) {
+      tr.className = 'fold';
+      tr.appendChild(foldToggle(td('⋯ ' + g.items.length + ' 層 ⋯', 'lv'), elOf(g.items[0]), g.items.length));
+      tr.appendChild(td('…')); tr.appendChild(td('…'));
+      tr.appendChild(td('<span class="seg">' + g.items.map(segStr).join('/') + '</span>', 'exprcell'));
+      tr.appendChild(td(g.items.length + ' 層單傳,無選擇 · 點層級展開', 'whycol'));
+    } else {
+      const n = g.item;
+      let cell = td(esc(label(n.els[0]))
+        + (n.els[0] === lastChain ? '<span class="homemark">⌂</span>' : ''), 'lv');
+      if (n.chain) cell = greenTarget(cell, n.els[0]);
+      tr.appendChild(cell);
+      const body = (el, idx) => '<span class="seg">' + n.tag + '[' + idx + ']</span>'
+        + (el ? '<span class="txt">' + esc(clip(getTxt(el), 40)) + '</span>' : '');
+      tr.appendChild(td(body(n.els[0], n.idx)));
+      tr.appendChild(td(n.chain ? body(n.els[0], n.idx) : body(n.els[1], n.idxB)));
+      tr.appendChild(td(swCell(n)));
+      const w = why(n);
+      tr.appendChild(td('<span class="why1">' + w[0] + '</span><span class="why2">' + w[1] + '</span>', 'whycol'));
+    }
+    rowsEl.appendChild(tr);
+  }
+
+  $('#gp-expr').textContent = exprOf(model);
+  $('#gp-count').textContent = '命中 ' + matched.length + ' 筆(含你選的 2 個範例)';
+}
+
+/* ═══════════ 重算 ═══════════ */
+function rebuild(keepGreen) {
+  preview = null;
+  if (reds.length < 2) { green = null; nca = null; model = null; matched = []; }
+  else {
+    nca = findNCA(reds[0], reds[1]);
+    /* 綠框必須是 NCA 或它的祖先;否則歸位 */
+    if (!keepGreen || !green || !(green === nca || green.contains(nca))) green = nca;
+    model = computeModel(reds[0], reds[1], nca, green);
+    matched = model.err ? [] : (evalIn(exprOf(model), green) || []);
+    if (!model.err && matched.length === 0) model.err = 'XPath 執行失敗或無命中';
+  }
+  rebuildBoxes();
+  render();
+}
+function resetAll() {
+  reds = []; overrides.clear(); expanded.clear();
+  green = null; nca = null; hoverEl = null;
+  phase = on ? 'select' : 'idle';
+  tipEl.style.display = 'none';
+  rebuild(false);
+}
+
+/* ═══════════ 頁面互動 ═══════════ */
+function onMove(e) {
+  if (!on || phase !== 'select') return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  if (!el || UI(el) || el === document.body || el === document.documentElement) {
+    hoverEl = null; tipEl.style.display = 'none'; rebuildBoxes(); return;
+  }
+  hoverEl = el;
+  tipEl.style.display = 'block';
+  tipEl.style.left = Math.min(e.clientX + 12, innerWidth - 300) + 'px';
+  tipEl.style.top = (e.clientY + 18) + 'px';
+  tipEl.textContent = label(el);
+  rebuildBoxes();
+}
+function onClick(e) {
+  if (!on || phase !== 'select' || UI(e.target)) return;
+  e.preventDefault(); e.stopPropagation();
+  const el = hoverEl; if (!el) return;
+  if (reds.some(r => r === el || r.contains(el) || el.contains(r))) {
+    toast('與現有紅框巢狀,請框選平行的元素'); return;
+  }
+  reds.push(el);
+  if (reds.length === 2) { phase = 'tune'; hoverEl = null; tipEl.style.display = 'none'; }
+  rebuild(false);
+}
+function onCtx(e) {
+  if (!on || UI(e.target)) return;
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const hit = reds.find(r => r === el || r.contains(el));
+  if (!hit) return;
+  e.preventDefault(); e.stopPropagation();
+  reds = reds.filter(r => r !== hit);
+  overrides.clear(); expanded.clear();
+  phase = 'select';
+  rebuild(false);
+}
+const swallow = e => { if (on && phase === 'select' && !UI(e.target)) { e.preventDefault(); e.stopPropagation(); } };
+
+addEventListener('mousemove', onMove, true);
+addEventListener('click', onClick, true);
+addEventListener('contextmenu', onCtx, true);
+addEventListener('mousedown', swallow, true);
+addEventListener('mouseup', swallow, true);
+addEventListener('keydown', e => { if (e.key === 'Escape' && on) $('#tool-on').click(); }, true);
+
+/* ═══════════ 輸出 ═══════════ */
+function copyText(t, okMsg) {
+  const done = () => toast(okMsg);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(done, () => fallback(t, done));
+  } else fallback(t, done);
+}
+function fallback(t, done) {
+  const ta = document.createElement('textarea');
+  ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+  document.body.appendChild(ta); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  ta.remove();
+  ok ? done() : toast('複製失敗,請手動選取底部查詢式');
+}
+
+/* ═══════════ 沙盒 chrome ═══════════ */
+function loadFixture(which) {
+  const t = document.getElementById(which === 'google' ? 'fx-google' : 'fx-clean');
+  $('#fx').replaceChildren(t.content.cloneNode(true));
+  resetAll();
+}
+$('#fixture').addEventListener('change', e => loadFixture(e.target.value));
+$('#tool-on').addEventListener('change', e => {
+  on = e.target.checked;
+  panel.classList.toggle('on', on);
+  resetAll();
+});
+$('#btn-clear').addEventListener('click', resetAll);
+$('#btn-txtmode').addEventListener('click', () => { txtMode = (txtMode + 1) % TXTMODES.length; render(); });
+$('#btn-min').addEventListener('click', () => panel.classList.toggle('min'));
+$('#btn-copy').addEventListener('click', () => copyText(
+  '綠框: ' + absPath(green) + '\n判斷式: ' + exprOf(model)
+  + '\n取值: ' + TXTMODES[txtMode].spec + '\n空白: \\s+ → 單一空格,前後 trim',
+  '已複製查詢式'));
+$('#btn-extract').addEventListener('click', () => copyText(
+  matched.map(getTxt).join('\n'), '已複製 ' + matched.length + ' 筆'));
+
+/* 面板拖曳 */
+(() => {
+  const head = panel.querySelector('.head');
+  let sx = 0, sy = 0, ox = 0, oy = 0, dragging = false;
+  head.addEventListener('mousedown', e => {
+    if (e.target.tagName === 'BUTTON') return;
+    const r = panel.getBoundingClientRect();
+    panel.style.left = r.left + 'px'; panel.style.top = r.top + 'px';
+    panel.style.right = 'auto'; panel.style.bottom = 'auto';
+    sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top; dragging = true;
+    e.preventDefault(); e.stopPropagation();
+  }, true);
+  addEventListener('mousemove', e => {
+    if (!dragging) return;
+    panel.style.left = Math.max(4, ox + e.clientX - sx) + 'px';
+    panel.style.top = Math.max(4, oy + e.clientY - sy) + 'px';
+  }, true);
+  addEventListener('mouseup', () => { dragging = false; }, true);
+})();
+
+loadFixture('clean');
+})();
+</script>
+</body>
+</html>
