@@ -72,6 +72,7 @@ a.stretch{position:absolute;inset:0;display:block}
 .list .t{display:block;padding:8px 12px;border:1px solid var(--line);border-radius:8px;
   text-decoration:none;color:var(--fg)}
 .list .promo{border-left:3px solid #e8590c;padding-left:6px}
+.list .badge{border-left:3px solid #0a66c2;padding-left:6px}
 .feed{max-width:420px}
 .feed .post{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:6px}
 .feed .post h3{margin:0;font-size:.95rem}
@@ -88,10 +89,9 @@ a.stretch{position:absolute;inset:0;display:block}
 .bx.hover{border:2px dashed var(--orange);background:rgba(232,89,12,.07)}
 .bx.green{border:2px solid var(--green)}
 .bx.blue{border:2px solid var(--blue)}
-.bx.blue-add{border:2px dashed var(--blue);background:rgba(10,102,194,.12)}
-.bx.blue-drop{border:2px dashed var(--blue);opacity:.22}
+/* 畫布只畫一個狀態:有預覽時藍框就是預覽後的集合,實線直接搬過去。
+   虛線增刪那套視覺語言認知負荷太高,不做預設。 */
 .bx.red{background:rgba(200,16,46,.12)}
-.bx.red-off{border:2px dashed var(--red)}
 #gp-tip{position:fixed;z-index:2147483100;pointer-events:none;display:none;
   font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:4px;
   background:#1c2430;color:#fff;white-space:nowrap;max-width:60vw;overflow:hidden;text-overflow:ellipsis}
@@ -116,11 +116,13 @@ button.gp:hover:not(:disabled){background:#d5dbe2}
 button.gp:disabled{opacity:.45;cursor:default}
 
 /* ---------- 第 1 列:查詢式 pills ----------
-   括號內 = 查詢式。左右兩側(綠框以上、紅框以下)灰掉並摺疊 ——
-   「無法調節的節點自動坍縮」不需要另一套規則:在不在邊界內就是規則。 */
+   括號內 = 查詢式,兩側(綠框以上、紅框以下)灰掉。不做坍縮 ——
+   坍縮會在按下拖曳的瞬間展開、把落點從游標底下推走,改用橫向捲軸。 */
 #gp-rowwrap{overflow-x:auto;overflow-y:hidden;padding:12px 12px 10px;border-bottom:1px solid var(--line)}
+#gp-rowwrap::-webkit-scrollbar{height:7px}
+#gp-rowwrap::-webkit-scrollbar-thumb{background:#c9d0d8;border-radius:4px}
 #gp-row{display:flex;align-items:center;gap:3px;white-space:nowrap;min-height:30px;
-  width:max-content;padding-top:13px}
+  width:max-content;padding-top:16px}
 .pill{display:inline-flex;align-items:center;justify-content:center;
   font-family:var(--mono);font-size:12px;
   padding:3px 6px;border-radius:5px;background:#eef1f4;color:var(--fg);position:relative}
@@ -133,8 +135,6 @@ button.gp:disabled{opacity:.45;cursor:default}
   border:1px solid var(--blue);color:var(--blue);background:transparent;opacity:.55}
 .pill .ix.on{background:var(--blue);color:#fff;opacity:1}
 .pill .ix:hover{opacity:1;box-shadow:0 0 0 2px rgba(10,102,194,.22)}
-/* 現值 ≠ 預設值 —— 只在你動過的地方出現 */
-.pill.chg{box-shadow:inset 0 -2px 0 var(--orange)}
 
 /* 抽象化:整顆 pill 就是開關。灰 = 不能按;實心 = 序號開著;空心 = 序號關著。
    沒有開關的 pill 一律沒有 hover 效果 —— 會亮的東西必須是能按的東西。 */
@@ -144,11 +144,8 @@ button.gp:disabled{opacity:.45;cursor:default}
 .pill.abs.isgreen{border-color:var(--green);border-style:solid}
 .pill.abs.on{background:var(--blue);cursor:pointer}
 .pill.abs.off{background:var(--bg);border:2px solid var(--blue);cursor:pointer}
-.pill.abs.chg{box-shadow:0 3px 0 -1px var(--orange)}
+.pill.abs.on:hover,.pill.abs.off:hover{box-shadow:0 0 0 3px rgba(10,102,194,.22)}
 
-.fold{position:relative;font-size:11px;color:var(--faint);padding:3px 6px;border-radius:5px;
-  border:1px dashed var(--line);cursor:pointer;white-space:nowrap}
-.fold:hover{color:var(--mute);border-color:var(--mute)}
 
 /* ▼ = 現在(可拖);▽ = 原始位置。標記指著「哪一顆 pill」而不是縫隙 ——
    縫隙上的直立拉桿會讓人分不清它屬於左邊還是右邊那一層。
@@ -160,22 +157,30 @@ button.gp:disabled{opacity:.45;cursor:default}
 .mk.ghost{opacity:.5}
 .mk.cur{pointer-events:auto;cursor:ew-resize}
 
-/* 分岔:同一列局部裂成兩線再合回來(捷運路線圖),不需要符號或圖例 */
+/* 分岔:同一列局部裂成兩線再合回來(捷運路線圖),不需要符號或圖例。
+   分歧槽即使沒有分岔也存在 —— ＋ 必須永遠在,否則沒有分岔時就長不出第一條岔路。 */
 .fork{display:inline-flex;flex-direction:column;gap:3px;
   border-left:2px solid var(--faint);border-right:2px solid var(--faint);
-  border-radius:6px;padding:2px 5px;margin:0 2px}
+  border-radius:6px;padding:3px 5px;margin:0 2px}
+.fork.bare{border-color:transparent;padding:3px 1px}
 .branch{display:inline-flex;align-items:center;gap:3px}
-.branch.off{opacity:.4}
-.branch.off .pill{background:transparent;border:1px dashed var(--line)}
 .branch .empty{font-size:11px;color:var(--faint);font-family:var(--mono)}
-.btog{font-size:10.5px;color:var(--mute);border:1px solid var(--line);border-radius:4px;
-  padding:1px 5px;margin-left:4px;cursor:pointer;background:var(--bg)}
-.btog:hover{border-color:var(--blue);color:var(--blue)}
+/* 刪除而不是停用:停用會讓範例掉到 1 個,破壞「至少選兩個」的規則 */
+.btrash{font-size:11px;line-height:1;padding:1px 3px;border-radius:4px;cursor:pointer;
+  opacity:.5;filter:grayscale(1)}
+.btrash:hover{opacity:1;filter:none;background:rgba(200,16,46,.12)}
+.btrash.dead{opacity:.18;cursor:default}
+.bplus{align-self:center;font-size:11px;line-height:1;color:var(--mute);cursor:pointer;
+  border:1px dashed var(--line);border-radius:4px;padding:1px 7px;margin-top:1px;background:var(--bg)}
+.bplus:hover{color:var(--blue);border-color:var(--blue)}
+.bplus.armed{color:#fff;background:var(--blue);border-color:var(--blue);border-style:solid}
 
 /* ---------- 預覽列表 = 差異檢視器 ----------
    消失的列位置保留不重排,否則整份列表會跳動、眼睛得重找位置。 */
 #gp-list{padding:6px 12px 10px}
-.lrow{display:flex;gap:8px;align-items:baseline;padding:2px 4px;cursor:pointer}
+.lrow{display:flex;gap:7px;align-items:baseline;padding:2px 4px;border-radius:4px}
+.lrow .aim{font-size:11px;color:var(--faint);cursor:pointer;flex:0 0 auto;line-height:1.4}
+.lrow .aim:hover{color:var(--blue)}
 .lrow .li{font-family:var(--mono);font-size:11px;color:var(--faint);width:1.6em;text-align:right;flex:0 0 auto}
 .lrow .lt{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lrow .lt.empty{color:var(--red);font-style:italic}
@@ -203,6 +208,7 @@ button.gp:disabled{opacity:.45;cursor:default}
       <option value="google">google 搜尋結果(真實)</option>
       <option value="stretch">案例二 · 鋪滿整列的連結</option>
       <option value="deco">案例一 · 裝飾層</option>
+      <option value="union">案例三 · 三種巢狀形狀(多重 union)</option>
     </select>
   </label>
   <span class="sp"></span>
@@ -271,6 +277,21 @@ button.gp:disabled{opacity:.45;cursor:default}
 </section>
 </template>
 
+<template id="fx-union">
+<section class="demo">
+  <h2>Z · 同一份清單三種巢狀形狀(li/a、li/div/a、li/div/div/a) — 需要三條 union 分支</h2>
+  <ul class="list">
+    <li class="item"><a class="t" href="#">項目 一</a></li>
+    <li class="item"><div class="promo"><a class="t" href="#">項目 二(推薦)</a></div></li>
+    <li class="item"><a class="t" href="#">項目 三</a></li>
+    <li class="item"><div class="badge"><div class="wrap"><a class="t" href="#">項目 四(置頂)</a></div></div></li>
+    <li class="item"><div class="promo"><a class="t" href="#">項目 五(推薦)</a></div></li>
+    <li class="item"><a class="t" href="#">項目 六</a></li>
+    <li class="item"><div class="badge"><div class="wrap"><a class="t" href="#">項目 七(置頂)</a></div></div></li>
+  </ul>
+</section>
+</template>
+
 <template id="fx-google">
 <div id="bres"><div class="ULSxyf"><div class="MjjYud"><div data-abe="" data-hveid="CC0QAA" data-ved="2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ26YDegQILRAA"><div class="oIk2Cb"><div class="M6HR1c PJI6ge adDDi"><span class="mgAbYb RES9jf YC72Wc IFnjPb JGD2rd" aria-level="2" role="heading">其他人也搜尋了以下項目</span><span class="YR2tRd"></span></div><div class="y6Uyqe"><div class="EIaa9b"><div class="AJLUJb"><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CC4QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%98%AF+%E4%BB%80%E9%BA%BC&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAguEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>是 什麼</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CEQQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%95%99%E5%AD%B8&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAhEEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>教學</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CD4QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E5%B7%A5%E5%85%B7&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg-EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>工具</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CD0QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Python+unit+test&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg9EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd"><b>Python</b> unit test</span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div></div><div class="AJLUJb"><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDwQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%80%8E%E9%BA%BC+%E5%AF%AB&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg8EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>怎麼 寫</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDgQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E7%AF%84%E4%BE%8B&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg4EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>範例</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDAQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%84%8F%E6%80%9D&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAgwEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>意思</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CC8QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+case&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAgvEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>case</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div></div></div></div></div></div></div></div></div>
 </template>
@@ -282,7 +303,6 @@ button.gp:disabled{opacity:.45;cursor:default}
     <b>擷取</b>
     <span id="gp-phase"></span>
     <span class="sp"></span>
-    <button class="gp" id="btn-add">加範例</button>
     <button class="gp" id="btn-abstract">抽象</button>
     <button class="gp" id="btn-clear">清除</button>
     <button class="gp" id="btn-min">－</button>
@@ -309,8 +329,8 @@ button.gp:disabled{opacity:.45;cursor:default}
 const $ = s => document.querySelector(s);
 const UI = el => !!(el && el.closest && el.closest('#gp-panel,#gp-overlay,#gp-tip,header.sandbox'));
 const norm = s => String(s).replace(/\s+/g, ' ').trim();
-const esc = s => String(s).replace(/[&<>"]/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]));
 const clip = (s, n) => { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+const HTMLNS = 'http://www.w3.org/1999/xhtml';
 
 const TXTMODES = [
   { label:'文字', tip:'innerText:所見即所得', get: el => el.innerText },
@@ -338,25 +358,39 @@ const ncaOf = els => {
 };
 const docOrder = (a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
 
+/* 沒有自己的直屬文字 = 這顆是「容器」而不是「欄位」。
+   不看子元素數量 —— <span>Unit test <b>是什麼</b></span> 有子元素卻是文字欄位。 */
+const noOwnText = el => {
+  for (const n of el.childNodes) if (n.nodeType === 3 && n.data.trim()) return false;
+  return true;
+};
+
+/* SVG 元素在 XPath 1.0 裏用標籤名定址不到(命名空間不符,`./span/svg` 回 0 筆),
+   所以選取一律夾到包住它的那個 HTML 元素。 */
+function pickable(t) {
+  if (!t || !t.closest) return null;
+  let s = t.closest('svg');
+  while (s) { const up = s.parentElement && s.parentElement.closest ? s.parentElement.closest('svg') : null;
+              if (up) s = up; else break; }
+  if (s) t = s.parentElement;
+  if (!t || t.namespaceURI !== HTMLNS) return null;
+  return t;
+}
+
 /* ═════════ 狀態 ═════════ */
 let on = false, phase = 'idle';          /* idle | select | tune | add */
-let examples = [];                       /* {origin, enabled} */
+let examples = [];                       /* {origin} */
 let redUp = 0, greenUp = 0;
 let overrides = new Map();               /* node.key → 'idx' | 'bare' */
-let openRuns = new Set();                /* 'L' | 'R' — 手動展開的摺疊段 */
-let abstract = true;                     /* 抽象化:不顯示標記名與序號字面 */
-const KEEP = 3;                          /* 邊界外最多顯示幾層 → 一次拖曳最多移動 3 格 */
+let abstract = true;
 let G = null, matched = [], preview = null;
 let hoverEl = null, dragging = null, pendingDestructive = null;
+let moved = true;                        /* 游標自上次點擊後是否移動過 */
+let toastMsg = '';
 
 const LIST_N = 12;
 
-/* ═════════ 幾何 ═════════
-   紅框與綠框是同一條線上的兩個切點:綠框是求值的根(不在查詢式裏),紅框是被命中的東西本身。
-   兩者各自只往 ancestor 方向離開原始位置,可動範圍首尾相接且不重疊,NCA 是固定樞紐。 */
-
-/* 紅拉桿的合法停點:所有範例在該層的標籤必須一致(對不齊的層不給停,否則兩個紅框
-   會落在不可比的深度,命中集合失去意義)。往上走到彼此重疊或吃掉 body 就停。 */
+/* ═════════ 幾何 ═════════ */
 function validStops(origins) {
   const out = [];
   for (let r = 0; ; r++) {
@@ -372,17 +406,16 @@ function validStops(origins) {
   }
   return out;
 }
-
 function greenStrip(nca) {
   const out = []; let e = nca, k = 0;
   while (e) { out.unshift({ el: e, k }); if (e === document.documentElement) break; e = e.parentElement; k++; }
   return out;
 }
 
-/* 純函式:給定邊界回傳完整幾何。預覽與拖曳都用它試算,不動 G。 */
-function computeGeom(gUp, rUp) {
-  if (examples.length < 2) return null;
-  const origins = examples.map(e => e.origin);
+function computeGeom(gUp, rUp, exs) {
+  exs = exs || examples;
+  if (exs.length < 2) return null;
+  const origins = exs.map(e => e.origin);
   const stops = validStops(origins);
   if (!stops.length) return null;
   const r = stops.includes(rUp) ? rUp : (stops.filter(s => s <= rUp).pop() ?? stops[0]);
@@ -398,8 +431,7 @@ function computeGeom(gUp, rUp) {
   const paths = reds.map(rd => segsUp(rd, nca));
   paths.forEach(p => p.forEach((s, i) => { s.r = r + (p.length - 1 - i); }));
 
-  /* 共同結尾:從尾端逐層比對「標籤」。序號相異不影響 —— 那一層改用 forced bare 即可,
-     所以 v3 的共同結尾比 v2(要求 tag+idx 全等)長。 */
+  /* 共同結尾:從尾端逐層比對「標籤」。序號相異不影響 —— 那一層改用 forced bare。 */
   let L = 0;
   const minLen = Math.min(...paths.map(p => p.length));
   while (L < minLen) {
@@ -410,9 +442,8 @@ function computeGeom(gUp, rUp) {
   const prefixes = paths.map(p => p.slice(0, p.length - L));
   const fork = prefixes.some(p => p.length > 0);
 
-  /* 相同形狀的範例併成同一條分支。分支的身分是「形狀」(標籤序列)而不是 tag+idx ——
-     否則 li[1] 與 li[3] 會變成兩條畫起來一模一樣的冗餘分支。序號相異時該層自然
-     forced bare,跟共同結尾的處理完全一致。 */
+  /* 分支的身分是「形狀」(標籤序列)而不是 tag+idx,否則 li[1] 與 li[3] 會變成
+     兩條畫起來一模一樣的冗餘分支。序號相異時該層自然 forced bare。 */
   const bmap = new Map();
   prefixes.forEach((p, i) => {
     const sig = p.map(s => s.tag).join('/');
@@ -421,12 +452,11 @@ function computeGeom(gUp, rUp) {
     bmap.get(sig).exs.push(i);
   });
   const branches = [...bmap.values()];
-  branches.forEach(b => { b.enabled = b.exs.some(i => examples[i].enabled); });
 
   const chain = segsUp(nca, green);
   chain.forEach((s, i) => { s.k = chain.length - 1 - i; });
 
-  const geom = { reds, nca, green, gUp: g, rUp: r, stops, strip, paths, L, branches, chain, fork };
+  const geom = { reds, nca, green, gUp: g, rUp: r, stops, strip, paths, L, branches, chain, fork, exs };
   buildNodes(geom);
   return geom;
 }
@@ -434,6 +464,7 @@ function computeGeom(gUp, rUp) {
 /* ═════════ pill 節點 ═════════ */
 function buildNodes(geom) {
   const nodes = [];
+  const mk = n => { nodes.push(n); return n; };
   geom.chainNodes = geom.chain.map(s =>
     mk({ kind:'chain', tag:s.tag, idxs:[s.idx], els:[s.el], key:s.el, k:s.k }));
   geom.branches.forEach((b, bi) => {
@@ -446,13 +477,16 @@ function buildNodes(geom) {
     geom.sufNodes.push(mk({ kind:'suffix', tag:segs[0].tag, idxs:segs.map(s => s.idx),
       els:segs.map(s => s.el), key:'S@' + (geom.rUp + j), r: geom.rUp + j }));
   }
-  function mk(n) { nodes.push(n); return n; }
   geom.nodes = nodes;
   geom.terminal = geom.sufNodes[geom.sufNodes.length - 1] || null;
 
   for (const n of nodes) {
-    n.forced = n.idxs.some(i => i !== n.idxs[0]);      /* 序號沒有可比性 → 只能 bare */
-    n.def = (n === geom.terminal && !n.forced) ? 'idx' : 'bare';
+    n.forced = n.idxs.some(i => i !== n.idxs[0]);
+    /* 終端是「欄位」還是「一筆記錄」:有直屬文字 = 欄位,保留使用者點的序號;
+       沒有直屬文字 = 容器,丟掉序號才會每一筆都抓到。量詞取 any —— idx 是比較緊
+       的一邊,猜錯的後果是漏抓(看得見)。 */
+    const field = n === geom.terminal && n.els.some(e => !noOwnText(e));
+    n.def = (field && !n.forced) ? 'idx' : 'bare';
     n.state = n.forced ? 'bare' : n.def;
     if (!n.forced && overrides.has(n.key)) n.state = overrides.get(n.key);
   }
@@ -468,11 +502,10 @@ function exprOf(geom, root) {
   const head = root + (c ? '/' + c : '');
   const tail = suf ? '/' + suf : '';
   if (!geom.fork) return head + tail;
-  const bs = geom.branches.filter(b => b.enabled).map(b => {
+  const bs = geom.branches.map(b => {
     const p = b.nodes.map(segStr).join('/');
     return head + (p ? '/' + p : '');
   });
-  if (!bs.length) return null;
   if (bs.length === 1) return bs[0] + tail;
   return '(' + bs.join(' | ') + ')' + tail;
 }
@@ -521,11 +554,12 @@ function matchesIfBound(gUp, rUp) {
   const m = computeGeom(gUp, rUp);
   return m ? runOf(m) : [];
 }
-function matchesIfBranch(bi) {
-  const b = G.branches[bi], was = b.enabled;
-  b.enabled = !was;
-  const r = exprOf(G) ? runOf(G) : [];
-  b.enabled = was; return r;
+function matchesWithout(bi) {
+  const drop = new Set(G.branches[bi].exs);
+  const rest = examples.filter((_, i) => !drop.has(i));
+  if (rest.length < 2) return null;
+  const m = computeGeom(greenUp, redUp, rest);
+  return m ? runOf(m) : [];
 }
 
 /* ═════════ overlay ═════════ */
@@ -545,21 +579,16 @@ function paintBoxes() {
   }
   ov.replaceChildren(f);
 }
-/* 綠 = 完全在外(p+3);藍 = 騎在邊框上(p+1);紅 = 內填色(p0,不畫線)。
-   三種不同編碼而非三個同心環 —— 範例元素同時也是命中元素,同心環會變成相距 2px 的平行線。 */
+/* 畫布永遠只畫「一個狀態」,從不畫兩個狀態的差 ——
+   有預覽時藍框就是預覽後的集合(實線,直接搬過去),增刪的差只活在下方列表。
+   虛線增刪那套視覺語言認知負荷太高,不該是預設。 */
 function rebuildBoxes() {
   boxes = [];
   if (hoverEl) boxes.push({ el: hoverEl, kind: 'hover', pad: 0 });
   if (G && G.green) boxes.push({ el: G.green, kind: 'green', pad: 3 });
-  const cur = new Set(matched), pv = preview ? new Set(preview) : null;
-  const shown = pv ? [...new Set([...cur, ...pv])] : matched;
-  for (const el of shown) {
-    const kind = !pv ? 'blue' : (pv.has(el) ? (cur.has(el) ? 'blue' : 'blue-add') : 'blue-drop');
-    boxes.push({ el, kind, pad: 1 });
-  }
-  /* 還沒湊滿兩個範例時也要畫 —— 點下第一個就該看得到自己選了什麼 */
-  const marks = G ? G.reds.map((rd, i) => [rd, examples[i].enabled]) : examples.map(ex => [ex.origin, true]);
-  marks.forEach(([rd, en]) => { if (rd) boxes.push({ el: rd, kind: en ? 'red' : 'red-off', pad: 0 }); });
+  for (const el of (preview || matched)) boxes.push({ el, kind: 'blue', pad: 1 });
+  const reds = G ? G.reds : examples.map(x => x.origin);
+  reds.forEach(rd => { if (rd) boxes.push({ el: rd, kind: 'red', pad: 0 }); });
   paintBoxes();
 }
 let raf = 0;
@@ -567,44 +596,44 @@ const schedule = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; 
 addEventListener('scroll', schedule, true);
 addEventListener('resize', schedule);
 
-/* 預覽只動:頁面藍框、命中數、列表。pills 的存在/寬度/位置一律凍結。 */
 function setPreview(next) { preview = next || []; rebuildBoxes(); renderCount(); renderList(); }
 function clearPreview() { if (!preview) return; preview = null; rebuildBoxes(); renderCount(); renderList(); }
+/* 點擊後游標還停在原處,DOM 重建會讓瀏覽器對新元素補送 mouseenter ——
+   若不擋,使用者會立刻看到一次「反向預覽」。必須先移開再回來才算數。 */
+const armed = () => moved;
 
 /* ═════════ 面板 ═════════ */
-const panel = $('#gp-panel'), rowEl = $('#gp-row'), listEl = $('#gp-list');
+const panel = $('#gp-panel'), rowEl = $('#gp-row'), wrapEl = $('#gp-rowwrap'), listEl = $('#gp-list');
 function toast(t) {
-  const m = $('#gp-msg'); m.textContent = t;
-  clearTimeout(toast._t); toast._t = setTimeout(() => { if (m.textContent === t) m.textContent = ''; }, 3000);
+  toastMsg = t; $('#gp-msg').textContent = t;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { toastMsg = ''; render(); }, 3200);
 }
 const el = (cls, txt) => { const d = document.createElement('span'); d.className = cls; if (txt != null) d.textContent = txt; return d; };
 
-/* 抽象化模式:整顆 pill 就是開關本身 —— 灰 = 不能按,實心 = 序號開著,空心 = 序號關著。
-   沒有開關的 pill 不給 hover 效果,也不給 hover 預覽(預覽只在拖曳時發生)。 */
 function toggleNode(n) {
   overrides.set(n.key, n.state === 'idx' ? 'bare' : 'idx');
-  clearPreview(); rebuild();
+  moved = false; clearPreview(); rebuild();
 }
 function pillEl(n) {
   const p = el('pill' + (abstract ? ' abs' : ''));
-  if (n.visible) {
-    p.classList.add(n.state === 'idx' ? 'on' : 'off');
-    if (n.state !== n.def) p.classList.add('chg');
-  } else p.classList.add('lock');
+  if (n.visible) p.classList.add(n.state === 'idx' ? 'on' : 'off');
+  else p.classList.add('lock');
   if (!abstract) p.appendChild(el('tag', n.tag));
   if (n.visible) {
-    if (abstract) p.addEventListener('click', () => toggleNode(n));
-    else {
-      const ix = el('ix' + (n.state === 'idx' ? ' on' : ''), '[' + n.idxs[0] + ']');
-      ix.addEventListener('click', e => { e.stopPropagation(); toggleNode(n); });
-      p.appendChild(ix);
-    }
+    const hit = abstract ? p : el('ix' + (n.state === 'idx' ? ' on' : ''), '[' + n.idxs[0] + ']');
+    hit.addEventListener('mouseenter', () => {
+      if (!armed()) return;
+      const s = n.state; n.state = s === 'idx' ? 'bare' : 'idx';
+      const r = runOf(G); n.state = s; setPreview(r);
+    });
+    hit.addEventListener('mouseleave', clearPreview);
+    hit.addEventListener('click', e => { e.stopPropagation(); toggleNode(n); });
+    if (!abstract) p.appendChild(hit);
   }
   if (n.r != null && G.stops.includes(n.r)) p.dataset.rstop = n.r;
   if (n.k != null) p.dataset.gstop = n.k;
   return p;
 }
-
 function dimPill(e_, opts) {
   const p = el('pill dim' + (abstract ? ' abs' : ''));
   if (!abstract) p.appendChild(el('tag', e_.tagName.toLowerCase()));
@@ -613,9 +642,7 @@ function dimPill(e_, opts) {
   if (opts.green) p.classList.add('isgreen');
   return p;
 }
-
-/* ▼ = 現在(可拖);▽ = 原始位置。標記指著「哪一顆 pill」,不是指著縫隙 ——
-   縫隙上的直立拉桿會讓人分不清它屬於左邊還是右邊那一層。 */
+/* ▼ = 現在(可拖);▽ = 原始位置。標記指著哪一顆 pill,不是指著縫隙。 */
 function mark(host, kind, cur) {
   if (!host) return;
   const m = el('mk ' + kind + (cur ? ' cur' : ' ghost'), cur ? '▼' : '▽');
@@ -623,104 +650,139 @@ function mark(host, kind, cur) {
   host.appendChild(m);
 }
 
-function foldChip(n, side) {
-  const c = el('fold', '⋯ ' + n + ' 層 ⋯');
-  c.addEventListener('click', () => { openRuns.has(side) ? openRuns.delete(side) : openRuns.add(side); render(); });
-  return c;
-}
-
 function renderRow() {
   rowEl.replaceChildren();
   if (!G) return;
-  const open = side => openRuns.has(side);
 
-  /* 綠框以上:灰、可摺。最多留 KEEP 層 —— 一次拖曳最多移動 KEEP 格,
-     放開後重畫才再釋出下一批,所以拖曳期間版面完全不動。 */
-  const above = G.strip.filter(s => s.k > G.gUp);
-  const keep = open('L') ? above.length : Math.min(KEEP, above.length);
-  if (above.length > keep) rowEl.appendChild(foldChip(above.length - keep, 'L'));
-  above.slice(above.length - keep).forEach(s => rowEl.appendChild(dimPill(s.el, { gstop: s.k })));
+  /* 綠框以上:灰。不做坍縮 —— 坍縮會在按下拖曳的瞬間展開、把落點從游標底下推走。 */
+  G.strip.filter(s => s.k > G.gUp).forEach(s => rowEl.appendChild(dimPill(s.el, { gstop: s.k })));
 
-  /* 綠框自己:是求值的根,不在查詢式裏 → 灰 */
   const gEntry = G.strip.find(s => s.k === G.gUp);
   const gPill = dimPill(gEntry.el, { gstop: G.gUp, green: true });
   rowEl.appendChild(gPill);
   mark(gPill, 'g', true);
 
-  /* chain:綠框以下到 NCA。綠框的原始位置是 NCA —— 在現在位置的「右邊」,因為只能往左離開 */
   let ncaPill = null;
   G.chainNodes.forEach(n => { ncaPill = pillEl(n); rowEl.appendChild(ncaPill); });
-  if (G.gUp !== 0) mark(ncaPill, 'g', false);
+  if (G.gUp !== 0) mark(ncaPill, 'g', false);   /* 只能往左離開原位 ⇒ ▽ 永遠在 ▼ 右邊 */
 
-  /* 分岔:同一列局部裂成兩線再合回來 */
-  if (G.fork) {
-    const fk = el('fork');
-    G.branches.forEach((b, bi) => {
-      const br = el('branch' + (b.enabled ? '' : ' off'));
-      if (!b.nodes.length) br.appendChild(el('empty', '（直接）'));
-      b.nodes.forEach(n => br.appendChild(pillEl(n)));
-      const tg = el('btog', b.enabled ? '停用' : '啟用');
-      tg.addEventListener('mouseenter', () => setPreview(matchesIfBranch(bi)));
-      tg.addEventListener('mouseleave', clearPreview);
-      tg.addEventListener('click', () => {
-        const others = G.branches.filter((x, i) => i !== bi && x.enabled);
-        if (b.enabled && !others.length) { toast('至少要留一條分支'); return; }
-        b.exs.forEach(i => { examples[i].enabled = !b.enabled; });
-        clearPreview(); rebuild();
+  /* 分歧槽:即使目前沒有分岔也存在。plus 必須永遠在 ——
+     「漏抓就再點一個範例」正是要在沒有分岔時把第一條岔路生出來。 */
+  const fk = el('fork' + (G.fork ? '' : ' bare'));
+  if (G.fork) G.branches.forEach((b, bi) => {
+    const br = el('branch');
+    const dead = examples.length - b.exs.length < 2;
+    const tr = el('btrash' + (dead ? ' dead' : ''), '🗑');
+    tr.title = dead ? '至少要留兩個範例' : '刪掉這條走法(連同它的範例)';
+    if (!dead) {
+      tr.addEventListener('mouseenter', () => { if (armed()) { const r = matchesWithout(bi); if (r) setPreview(r); } });
+      tr.addEventListener('mouseleave', clearPreview);
+      tr.addEventListener('click', () => {
+        const drop = new Set(b.exs);
+        examples = examples.filter((_, i) => !drop.has(i));
+        moved = false; clearPreview(); rebuild();
       });
-      br.appendChild(tg);
-      fk.appendChild(br);
-    });
-    rowEl.appendChild(fk);
-  }
+    }
+    br.appendChild(tr);
+    if (!b.nodes.length) br.appendChild(el('empty', '（直接）'));
+    b.nodes.forEach(n => br.appendChild(pillEl(n)));
+    fk.appendChild(br);
+  });
+  const plus = el('bplus' + (phase === 'add' ? ' armed' : ''), '＋');
+  plus.title = '再點一個目前沒抓到的同類元素,長出一條新的走法';
+  plus.addEventListener('click', () => {
+    phase = phase === 'add' ? 'tune' : 'add'; pendingDestructive = null; render();
+  });
+  fk.appendChild(plus);
+  rowEl.appendChild(fk);
 
-  /* 共同結尾 */
   let redPill = null;
   G.sufNodes.forEach(n => { redPill = pillEl(n); rowEl.appendChild(redPill); });
   mark(redPill, 'r', true);
 
-  /* 紅框以下到原始點擊處:灰、可摺。紅框的原始位置在最右端(原始點擊處) */
   const o0 = examples[0].origin;
-  const below = [];
-  for (let r = G.rUp - 1; r >= 0; r--) below.push({ el: ancAt(o0, r), r });
-  const keepR = open('R') ? below.length : Math.min(KEEP, below.length);
   let last = null;
-  below.slice(0, keepR).forEach(s => {
-    last = dimPill(s.el, G.stops.includes(s.r) ? { rstop: s.r } : {});
+  for (let r = G.rUp - 1; r >= 0; r--) {
+    last = dimPill(ancAt(o0, r), G.stops.includes(r) ? { rstop: r } : {});
     rowEl.appendChild(last);
+  }
+  if (G.rUp !== 0) mark(last, 'r', false);
+}
+
+/* 不坍縮之後第 1 列可能很長,查詢式本體會被推到捲軸外 —— 每次重畫把它捲回來 */
+function scrollQueryIntoView() {
+  const g = rowEl.querySelector('.mk.g.cur'), r = rowEl.querySelector('.mk.r.cur');
+  if (!g || !r) return;
+  const w = wrapEl.getBoundingClientRect();
+  const a = g.getBoundingClientRect().left, b = r.getBoundingClientRect().right;
+  if (a < w.left + 10) wrapEl.scrollLeft -= (w.left + 10 - a);
+  else if (b > w.right - 10) wrapEl.scrollLeft += Math.min(b - (w.right - 10), a - (w.left + 10));
+}
+
+/* 內容基底的 diff:列表是抽取結果的預覽,就該用抽取結果來 diff。
+   用節點身分比對的話,紅框從 span 移到它的 a,8 個元素全換但每列文字一模一樣,
+   畫面上會出現 8 刪 8 增的假變化。 */
+function buildRows() {
+  if (!preview) return matched.map(e => ({ el: e, kind: 'keep' }));
+  const A = matched.map(getTxt), B = preview.map(getTxt);
+  if (A.length === B.length && A.every((t, i) => t === B[i]))
+    return preview.map(e => ({ el: e, kind: 'keep' }));
+  const pool = new Map();
+  A.forEach(t => pool.set(t, (pool.get(t) || 0) + 1));
+  const rows = [];
+  preview.forEach((e, i) => {
+    const t = B[i];
+    if (pool.get(t) > 0) { pool.set(t, pool.get(t) - 1); rows.push({ el: e, kind: 'keep' }); }
+    else rows.push({ el: e, kind: 'add' });
   });
-  if (below.length > keepR) { last = foldChip(below.length - keepR, 'R'); rowEl.appendChild(last); }
-  if (G.rUp !== 0) mark(last, 'r', false);   /* 摺起來時原始位置就掛在摺疊塊上 */
+  const rem = new Map(pool);
+  matched.forEach((e, i) => {
+    const t = A[i];
+    if (rem.get(t) > 0) { rem.set(t, rem.get(t) - 1); rows.push({ el: e, kind: 'drop' }); }
+  });
+  rows.sort((x, y) => docOrder(x.el, y.el));
+  return rows;
 }
 
 function renderCount() {
   const c = $('#gp-count');
-  if (!G) { c.textContent = ''; return; }
-  const base = matched.length;
-  if (preview) { c.innerHTML = '共 ' + base + ' 筆 → <b>' + preview.length + ' 筆</b>'; c.classList.add('pv'); }
-  else { c.textContent = '共 ' + base + ' 筆'; c.classList.remove('pv'); }
+  if (!G) { c.textContent = ''; c.classList.remove('pv'); return; }
+  if (!preview) { c.textContent = '共 ' + matched.length + ' 筆'; c.classList.remove('pv'); return; }
+  const rows = buildRows();
+  const changed = rows.some(r => r.kind !== 'keep');
+  c.classList.add('pv');
+  /* 兩邊抽出來的東西一樣時連箭頭都不顯示 ——「這個動作不改變你抽到的東西」
+     本身就是使用者最想知道的答案 */
+  c.textContent = changed ? '共 ' + matched.length + ' 筆 → ' + preview.length + ' 筆'
+                          : '共 ' + matched.length + ' 筆 · 無變化';
 }
 
-/* 列表 = 差異檢視器。消失的列位置保留不重排,否則整份列表會跳動、眼睛得重找位置。 */
 function renderList() {
   listEl.replaceChildren();
   if (!G) return;
-  const cur = new Set(matched), pv = preview ? new Set(preview) : null;
-  const all = pv ? [...new Set([...matched, ...preview])].sort(docOrder) : matched;
-  const reds = new Set(G.reds);
-  all.slice(0, LIST_N).forEach((e_, i) => {
-    const row = el('lrow');
-    if (pv && !pv.has(e_)) row.classList.add('drop');
-    else if (pv && !cur.has(e_)) row.classList.add('add');
-    if (reds.has(e_)) row.classList.add('ex');
+  const rows = buildRows();
+  const exs = new Set(G.reds);
+  rows.slice(0, LIST_N).forEach((r, i) => {
+    const row = el('lrow' + (r.kind === 'keep' ? '' : ' ' + r.kind) + (exs.has(r.el) ? ' ex' : ''));
+    const aim = el('aim', '◎');
+    aim.title = '捲到這個元素';
+    aim.addEventListener('click', () => r.el.scrollIntoView({ block:'center', behavior:'smooth' }));
+    row.appendChild(aim);
     row.appendChild(el('li', String(i + 1)));
-    const t = getTxt(e_);
-    const tx = el('lt' + (t ? '' : ' empty'), t ? clip(t, 90) : '(空)');
-    row.appendChild(tx);
-    row.addEventListener('click', () => e_.scrollIntoView({ block:'center', behavior:'smooth' }));
+    const t = getTxt(r.el);
+    row.appendChild(el('lt' + (t ? '' : ' empty'), t ? clip(t, 90) : '(空)'));
     listEl.appendChild(row);
   });
-  if (all.length > LIST_N) listEl.appendChild(el('lmore', '⋯ 還有 ' + (all.length - LIST_N) + ' 筆'));
+  if (rows.length > LIST_N) listEl.appendChild(el('lmore', '⋯ 還有 ' + (rows.length - LIST_N) + ' 筆'));
+}
+
+/* 幾何失敗與定址失敗都必須出聲 —— §13 的「命中 0 不可能」只涵蓋查詢式求值 */
+function stateMsg() {
+  if (!on || examples.length < 2) return '';
+  if (!G) return '這些元素在任何一層都對不齊,無法建立查詢式 — 右鍵紅框可移除重選';
+  if (matched.length < examples.length)
+    return '有元素無法用 XPath 定址(多半是 SVG 內部) — 右鍵紅框可移除重選';
+  return '';
 }
 
 function render() {
@@ -731,42 +793,37 @@ function render() {
   $('#phase-hint').textContent = !on ? '關閉中'
     : phase === 'select' ? '點兩個看起來同一類的東西'
     : phase === 'add' ? '點一個目前沒抓到的同類元素'
-    : '拖拉桿改範圍 · 點序號改鬆緊 · 右鍵紅框可移除';
+    : '拖 ▼ 改範圍 · 點 pill 改鬆緊 · 右鍵紅框可移除';
   $('#btn-abstract').textContent = abstract ? '抽象' : '標記';
   $('#btn-abstract').title = abstract ? '目前隱藏標記名 — 點一下顯示' : '目前顯示標記名 — 點一下隱藏';
   $('#btn-txtmode').textContent = TXTMODES[txtMode].label;
   $('#btn-txtmode').title = TXTMODES[txtMode].tip;
   const ready = !!G;
   $('#btn-copy').disabled = !ready; $('#btn-extract').disabled = !ready;
-  $('#btn-add').disabled = !ready || phase === 'add';
-  renderRow(); renderCount(); renderList();
+  $('#gp-msg').textContent = toastMsg || stateMsg();
+  renderRow(); renderCount(); renderList(); scrollQueryIntoView();
 }
 
 /* ═════════ 重算 ═════════ */
 function rebuild() {
   preview = null;
   G = computeGeom(greenUp, redUp);
-  if (G) {
-    greenUp = G.gUp; redUp = G.rUp;
-    analyze(G);
-    matched = runOf(G);
-  } else matched = [];
+  if (G) { greenUp = G.gUp; redUp = G.rUp; analyze(G); matched = runOf(G); }
+  else matched = [];
+  if (phase === 'tune' && examples.length < 2) phase = 'select';
   rebuildBoxes(); render();
 }
 function resetAll() {
-  examples = []; overrides.clear(); openRuns.clear();
+  examples = []; overrides.clear();
   redUp = 0; greenUp = 0; G = null; matched = []; preview = null;
-  hoverEl = null; dragging = null; pendingDestructive = null;
+  hoverEl = null; dragging = null; pendingDestructive = null; toastMsg = '';
   phase = on ? 'select' : 'idle';
   tipEl.style.display = 'none';
   rebuild();
 }
 
-/* ═════════ 拉桿拖曳 ═════════
-   按下即全展開(摺疊只是靜態顯示優化);拖曳中 pills 版面凍結,只有拉桿位置、
-   灰/不灰、藍框與命中數會動。放開才重算版面。 */
-/* 按下不重畫任何東西 —— 展開會把拖曳目標從游標底下推走。
-   落點只有畫面上已經存在的那幾顆 pill,所以一次最多走 KEEP 格。 */
+/* ═════════ ▼ 拖曳 ═════════
+   按下不重畫任何東西:展開或重排會把落點從游標底下推走。 */
 function startDrag(e, kind) {
   e.preventDefault(); e.stopPropagation();
   const attr = kind === 'green' ? 'gstop' : 'rstop';
@@ -776,20 +833,20 @@ function startDrag(e, kind) {
   });
   if (!stops.length) return;
   const hd = e.currentTarget;
-  const base = hd.getBoundingClientRect().left + hd.getBoundingClientRect().width / 2;
-  dragging = { kind, stops, hd, base, v: kind === 'green' ? greenUp : redUp };
+  const r = hd.getBoundingClientRect();
+  dragging = { kind, stops, hd, base: r.left + r.width / 2, v: kind === 'green' ? greenUp : redUp };
   hd.classList.add('grab');
 }
 addEventListener('mousemove', e => {
+  moved = true;
   if (!dragging) return;
   let best = dragging.stops[0];
   for (const s of dragging.stops) if (Math.abs(s.x - e.clientX) < Math.abs(best.x - e.clientX)) best = s;
   dragging.hd.style.transform = 'translateX(calc(-50% + ' + (best.x - dragging.base) + 'px))';
   if (best.v !== dragging.v) {
     dragging.v = best.v;
-    const g = dragging.kind === 'green' ? best.v : greenUp;
-    const r = dragging.kind === 'green' ? redUp : best.v;
-    setPreview(matchesIfBound(g, r));
+    setPreview(matchesIfBound(dragging.kind === 'green' ? best.v : greenUp,
+                              dragging.kind === 'green' ? redUp : best.v));
   }
 }, true);
 addEventListener('mouseup', () => {
@@ -797,16 +854,16 @@ addEventListener('mouseup', () => {
   const d = dragging; dragging = null;
   d.hd.classList.remove('grab');
   if (d.kind === 'green') greenUp = d.v; else redUp = d.v;
-  clearPreview(); rebuild();
+  moved = false; clearPreview(); rebuild();
 }, true);
 
 /* ═════════ 頁面互動 ═════════ */
 const picking = () => phase === 'select' || phase === 'add';
 function onMove(e) {
   if (!on || !picking()) return;
-  const t = document.elementFromPoint(e.clientX, e.clientY);
+  const t = pickable(document.elementFromPoint(e.clientX, e.clientY));
   if (!t || UI(t) || t === document.body || t === document.documentElement) {
-    hoverEl = null; tipEl.style.display = 'none'; rebuildBoxes(); return;
+    hoverEl = null; tipEl.style.display = 'none'; clearPreview(); rebuildBoxes(); return;
   }
   hoverEl = t;
   tipEl.style.display = 'block';
@@ -819,16 +876,17 @@ function onMove(e) {
     if (probe) setPreview(probe.matched); else clearPreview();
   }
 }
-/* 加第三個範例分兩類:符合現有共同結尾 = 只多一條岔路(安全);不符合 = 共同結尾被迫
-   縮短、紅框上移、部分開關失效(破壞性)。破壞性不擋,但要二次確認。 */
+/* 加範例要不要二次確認。
+   不能用「共同結尾有沒有縮短」當判準 —— 還沒有分岔時,任何不同形狀的新範例都必然
+   讓共同結尾縮短,而那正是 union 的主要復原路徑。每次都跳確認等於把警告稀釋掉。
+   真正該擋的是「會毀掉東西」:紅框被迫移位,或使用者調過的某顆開關將不復存在。 */
 function tryAdd(t) {
   if (examples.some(x => x.origin === t || x.origin.contains(t) || t.contains(x.origin))) return null;
-  const save = examples;
-  examples = save.concat([{ origin: t, enabled: true }]);
-  const m = computeGeom(greenUp, redUp);
-  examples = save;
+  const m = computeGeom(greenUp, redUp, examples.concat([{ origin: t }]));
   if (!m) return null;
-  return { geom: m, matched: runOf(m), destructive: m.rUp !== G.rUp || m.L !== G.L };
+  const keys = new Set(m.nodes.map(n => n.key));
+  const lost = [...overrides.keys()].some(k => G.nodes.some(n => n.key === k) && !keys.has(k));
+  return { matched: runOf(m), destructive: m.rUp !== G.rUp || lost };
 }
 function onClick(e) {
   if (!on || !picking() || UI(e.target)) return;
@@ -846,18 +904,20 @@ function onClick(e) {
       return;
     }
     pendingDestructive = null;
-    examples.push({ origin: t, enabled: true });
+    examples.push({ origin: t });
     phase = 'tune'; hoverEl = null; tipEl.style.display = 'none';
     clearPreview(); rebuild(); return;
   }
-  examples.push({ origin: t, enabled: true });
+  examples.push({ origin: t });
   if (examples.length === 2) { phase = 'tune'; hoverEl = null; tipEl.style.display = 'none'; }
   rebuild();
 }
+/* 不依賴 G —— 配對失敗(G === null)正是最需要移除紅框的時候 */
 function onCtx(e) {
-  if (!on || UI(e.target) || !G) return;
+  if (!on || UI(e.target)) return;
   const t = document.elementFromPoint(e.clientX, e.clientY);
-  const ix = G.reds.findIndex(r => r === t || r.contains(t));
+  const reds = G ? G.reds : examples.map(x => x.origin);
+  const ix = reds.findIndex(r => r && (r === t || r.contains(t)));
   if (ix < 0) return;
   e.preventDefault(); e.stopPropagation();
   examples.splice(ix, 1);
@@ -872,16 +932,13 @@ addEventListener('mousedown', swallow, true);
 addEventListener('mouseup', swallow, true);
 addEventListener('keydown', e => { if (e.key === 'Escape' && on) $('#tool-on').click(); }, true);
 
-/* ═════════ 輸出 ═════════
-   一條字串。錨點的耐久度比 predicate 重要一個量級 —— 全序號絕對路徑遇到頁首多一個
-   banner 就報廢,所以優先用 id / class。 */
+/* ═════════ 輸出 ═════════ */
 function anchorExpr(target) {
   let e = target; const tail = []; let up = 0;
   while (e && up < 8) {
     if (e.id) {
-      const x = '//*[@id="' + e.id + '"]';
-      const hit = evalIn(x, document);
-      if (hit && hit.length === 1) return x + (tail.length ? '/' + tail.join('/') : '');
+      const hit = evalIn('//*[@id="' + e.id + '"]', document);
+      if (hit && hit.length === 1) return '//*[@id="' + e.id + '"]' + (tail.length ? '/' + tail.join('/') : '');
     }
     for (const c of e.classList) {
       if (!/^[A-Za-z][\w-]*$/.test(c)) continue;
@@ -914,8 +971,9 @@ function fallback(t, done) {
 }
 
 /* ═════════ 沙盒 chrome ═════════ */
+const FIXTURES = ['clean','google','stretch','deco','union'];
 function loadFixture(which) {
-  const t = document.getElementById('fx-' + (['clean','google','stretch','deco'].includes(which) ? which : 'clean'));
+  const t = document.getElementById('fx-' + (FIXTURES.includes(which) ? which : 'clean'));
   $('#fx').replaceChildren(t.content.cloneNode(true));
   resetAll();
 }
@@ -924,10 +982,6 @@ $('#tool-on').addEventListener('change', e => {
   on = e.target.checked; panel.classList.toggle('on', on); resetAll();
 });
 $('#btn-clear').addEventListener('click', resetAll);
-$('#btn-add').addEventListener('click', () => {
-  if (!G) return;
-  phase = 'add'; pendingDestructive = null; render();
-});
 $('#btn-abstract').addEventListener('click', () => { abstract = !abstract; render(); });
 $('#btn-txtmode').addEventListener('click', () => { txtMode = (txtMode + 1) % TXTMODES.length; render(); });
 $('#btn-min').addEventListener('click', () => panel.classList.toggle('min'));
