@@ -144,9 +144,7 @@ button.gp:disabled{opacity:.45;cursor:default}
 .pill.abs.isgreen{border-color:var(--green);border-style:solid}
 .pill.abs.on{background:var(--blue);cursor:pointer}
 .pill.abs.off{background:var(--bg);border:2px solid var(--blue);cursor:pointer}
-.pill.abs.on:hover,.pill.abs.off:hover{box-shadow:0 0 0 3px rgba(10,102,194,.22)}
 .pill.abs.chg{box-shadow:0 3px 0 -1px var(--orange)}
-.pill.abs.chg:hover{box-shadow:0 3px 0 -1px var(--orange),0 0 0 3px rgba(10,102,194,.22)}
 
 .fold{position:relative;font-size:11px;color:var(--faint);padding:3px 6px;border-radius:5px;
   border:1px dashed var(--line);cursor:pointer;white-space:nowrap}
@@ -155,13 +153,12 @@ button.gp:disabled{opacity:.45;cursor:default}
 /* ▼ = 現在(可拖);▽ = 原始位置。標記指著「哪一顆 pill」而不是縫隙 ——
    縫隙上的直立拉桿會讓人分不清它屬於左邊還是右邊那一層。
    紅綠都只能往左離開原始位置,所以 ▽ 永遠在 ▼ 的右邊。 */
-.mk{position:absolute;left:50%;transform:translateX(-50%);top:-13px;
-  font-size:11px;line-height:1;pointer-events:none;user-select:none}
+.mk {position: absolute;left: 50%;transform: translateX(-50%);top: -16px;font-size: 11px;
+  line-height: 1.6;pointer-events: none;user-select: none;width: 100%;text-align: center;height: 100%}
 .mk.g{color:var(--green)}
 .mk.r{color:var(--red)}
 .mk.ghost{opacity:.5}
 .mk.cur{pointer-events:auto;cursor:ew-resize}
-.mk.cur:hover,.mk.grab{text-shadow:0 0 6px currentColor}
 
 /* 分岔:同一列局部裂成兩線再合回來(捷運路線圖),不需要符號或圖例 */
 .fork{display:inline-flex;flex-direction:column;gap:3px;
@@ -178,8 +175,7 @@ button.gp:disabled{opacity:.45;cursor:default}
 /* ---------- 預覽列表 = 差異檢視器 ----------
    消失的列位置保留不重排,否則整份列表會跳動、眼睛得重找位置。 */
 #gp-list{padding:6px 12px 10px}
-.lrow{display:flex;gap:8px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer}
-.lrow:hover{background:var(--panel)}
+.lrow{display:flex;gap:8px;align-items:baseline;padding:2px 4px;cursor:pointer}
 .lrow .li{font-family:var(--mono);font-size:11px;color:var(--faint);width:1.6em;text-align:right;flex:0 0 auto}
 .lrow .lt{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lrow .lt.empty{color:var(--red);font-style:italic}
@@ -288,7 +284,6 @@ button.gp:disabled{opacity:.45;cursor:default}
     <span class="sp"></span>
     <button class="gp" id="btn-add">加範例</button>
     <button class="gp" id="btn-abstract">抽象</button>
-    <button class="gp" id="btn-txtmode">文字</button>
     <button class="gp" id="btn-clear">清除</button>
     <button class="gp" id="btn-min">－</button>
   </div>
@@ -297,8 +292,9 @@ button.gp:disabled{opacity:.45;cursor:default}
     <div id="gp-list"></div>
   </div>
   <div class="foot">
-    <button class="gp" id="btn-copy" disabled>複製</button>
-    <button class="gp" id="btn-extract" disabled>抽取文字</button>
+    <button class="gp" id="btn-copy" disabled>複製查詢式</button>
+    <label for="btn-txtmode">擷取模式: <button class="gp" id="btn-txtmode">文字</button></label>
+    <button class="gp" id="btn-extract" disabled>擷取</button>
     <span id="gp-count"></span>
     <span class="sp"></span>
     <span id="gp-msg"></span>
