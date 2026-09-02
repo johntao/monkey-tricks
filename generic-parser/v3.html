@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>通用擷取 v3 — 沙盒</title>
+<style>
+:root{
+  --bg:#fff; --fg:#1c2430; --mute:#5b6672; --faint:#9aa3ad;
+  --line:#d7dce2; --panel:#f2f4f6; --btn:#e3e7ec;
+  --red:#c8102e; --green:#0a8f3c; --blue:#0a66c2; --orange:#e8590c;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Noto Sans TC','Microsoft JhengHei',system-ui,sans-serif;
+     color:var(--fg);background:var(--bg);line-height:1.6}
+
+/* ---------- 沙盒 chrome ---------- */
+header.sandbox{position:sticky;top:0;z-index:100;display:flex;gap:18px;align-items:center;
+  padding:10px 18px;background:var(--panel);border-bottom:1px solid var(--line);font-size:14px}
+header.sandbox .sp{flex:1}
+header.sandbox label{display:flex;gap:8px;align-items:center;cursor:pointer;user-select:none}
+.switch{position:relative;display:inline-block;width:2.6rem;height:1.3rem;flex:0 0 auto}
+.switch input{position:absolute;opacity:0;width:0;height:0}
+.switch .track{position:absolute;inset:0;background:#c3cad2;border-radius:1rem;transition:background .18s}
+.switch .thumb{position:absolute;top:2px;left:2px;width:calc(1.3rem - 4px);height:calc(1.3rem - 4px);
+  background:#fff;border-radius:50%;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch input:checked + .track{background:var(--green)}
+.switch input:checked + .track .thumb{transform:translateX(1.3rem)}
+select{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:#fff}
+.hint{color:var(--mute);font-size:13px}
+
+main{padding:24px 18px 60vh;max-width:820px}
+
+/* ---------- 乾淨 fixture ---------- */
+.panel-box{max-width:720px;border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.panel-box h2{margin:0 0 2px;font-size:1.05rem}
+.panel-note{color:var(--mute);font-size:13px;margin-bottom:12px}
+.grid{display:flex;gap:28px}
+.col{list-style:none;margin:0;padding:0;flex:1}
+.item{margin:0 0 6px}
+.card{border:1px solid var(--line);border-radius:8px}
+.link{display:block;padding:8px 12px;text-decoration:none;color:var(--fg)}
+.link:hover{background:var(--panel)}
+
+/* ---------- google fixture 讓它有形狀 ---------- */
+#fx .EIaa9b{display:flex;gap:20px}
+#fx .M6HR1c{font-weight:700;margin-bottom:10px}
+#fx .AJLUJb{flex:1}
+#fx .b2Rnsc{margin-bottom:6px}
+#fx .ngTNl{display:block;padding:8px 12px;border:1px solid var(--line);border-radius:8px;
+  text-decoration:none;color:var(--fg)}
+#fx .B2VR9{display:flex;align-items:center;gap:8px}
+#fx .wyccme{flex:1}
+#fx .mgAbYb{font-weight:700;font-size:1.05rem}
+#fx svg{width:16px;height:16px;fill:var(--mute)}
+
+/* ---------- 案例二:鋪滿整列的連結 ---------- */
+table.rows{border-collapse:collapse;width:100%;max-width:640px}
+table.rows th{text-align:left;font-size:12px;color:var(--mute);font-weight:600;
+  padding:6px 10px;border-bottom:1px solid var(--line)}
+table.rows tr.row{position:relative}
+table.rows td{padding:9px 10px;border-bottom:1px solid var(--line)}
+table.rows tr.row:hover{background:var(--panel)}
+a.stretch{position:absolute;inset:0;display:block}
+
+/* ---------- 案例一:裝飾層 ---------- */
+.demo{margin-bottom:26px}
+.demo > h2{font-size:.95rem;margin:0 0 8px;color:var(--mute);font-weight:600}
+.list{list-style:none;margin:0;padding:0;max-width:420px}
+.list .item{margin-bottom:6px}
+.list .t{display:block;padding:8px 12px;border:1px solid var(--line);border-radius:8px;
+  text-decoration:none;color:var(--fg)}
+.list .promo{border-left:3px solid #e8590c;padding-left:6px}
+.feed{max-width:420px}
+.feed .post{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-bottom:6px}
+.feed .post h3{margin:0;font-size:.95rem}
+.feed .post .meta{margin:2px 0 0;font-size:12px;color:var(--mute)}
+.feed .promo{border-left:3px solid #e8590c;padding-left:6px;margin-bottom:6px}
+.feed .ad{border:1px dashed var(--line);border-radius:8px;padding:8px 12px;
+  font-size:12px;color:var(--mute)}
+
+
+/* ---------- 工具 overlay ----------
+   綠 = 完全在外;藍 = 騎在邊框上;紅 = 內填色(不畫線)。三種不同編碼,不是三個同心環。 */
+#gp-overlay{position:fixed;inset:0;pointer-events:none;z-index:2147483000}
+#gp-overlay .bx{position:fixed;pointer-events:none}
+.bx.hover{border:2px dashed var(--orange);background:rgba(232,89,12,.07)}
+.bx.green{border:2px solid var(--green)}
+.bx.blue{border:2px solid var(--blue)}
+.bx.blue-add{border:2px dashed var(--blue);background:rgba(10,102,194,.12)}
+.bx.blue-drop{border:2px dashed var(--blue);opacity:.22}
+.bx.red{background:rgba(200,16,46,.12)}
+.bx.red-off{border:2px dashed var(--red)}
+#gp-tip{position:fixed;z-index:2147483100;pointer-events:none;display:none;
+  font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:4px;
+  background:#1c2430;color:#fff;white-space:nowrap;max-width:60vw;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- 面板 ---------- */
+#gp-panel{position:fixed;right:16px;bottom:16px;z-index:2147483200;display:none;
+  width:min(880px,64vw);max-height:70vh;background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.22);font-size:13px;
+  flex-direction:column;overflow:hidden}
+#gp-panel.on{display:flex}
+#gp-panel .head{display:flex;gap:10px;align-items:center;padding:7px 12px;cursor:move;
+  background:var(--panel);border-bottom:1px solid var(--line);user-select:none}
+#gp-panel .head .sp{flex:1}
+#gp-panel .body{flex:1 1 auto;overflow:auto;padding:0}
+#gp-panel .foot{flex:0 0 auto;border-top:1px solid var(--line);background:var(--panel);
+  padding:7px 12px;display:flex;gap:10px;align-items:center}
+#gp-panel .foot .sp{flex:1}
+#gp-panel.min .body,#gp-panel.min .foot{display:none}
+button.gp{font:inherit;font-size:12px;line-height:1;padding:5px 9px;border:1px solid var(--line);
+  border-radius:5px;background:var(--btn);color:var(--fg);cursor:pointer}
+button.gp:hover:not(:disabled){background:#d5dbe2}
+button.gp:disabled{opacity:.45;cursor:default}
+
+/* ---------- 第 1 列:查詢式 pills ----------
+   括號內 = 查詢式。左右兩側(綠框以上、紅框以下)灰掉並摺疊 ——
+   「無法調節的節點自動坍縮」不需要另一套規則:在不在邊界內就是規則。 */
+#gp-rowwrap{overflow-x:auto;overflow-y:hidden;padding:12px 12px 10px;border-bottom:1px solid var(--line)}
+#gp-row{display:flex;align-items:center;gap:3px;white-space:nowrap;min-height:30px;width:max-content}
+.pill{display:inline-flex;align-items:center;font-family:var(--mono);font-size:12px;
+  padding:3px 6px;border-radius:5px;background:#eef1f4;color:var(--fg);position:relative}
+.pill.dim{background:transparent;color:var(--faint)}
+.pill.dim[data-gstop],.pill.dim[data-rstop]{cursor:default}
+.pill.dim[data-gstop]:hover,.pill.dim[data-rstop]:hover{background:#f4f6f8;color:var(--mute)}
+.pill.isgreen{color:var(--green);font-weight:700}
+.pill .tag{pointer-events:none}
+/* 序號片:實心 = 查詢式裏真的有 [n];空心 = 真的沒有。畫面即查詢式,不需要翻譯。 */
+.pill .ix{margin-left:1px;padding:0 3px;border-radius:3px;cursor:pointer;
+  border:1px solid var(--blue);color:var(--blue);background:transparent;opacity:.55}
+.pill .ix.on{background:var(--blue);color:#fff;opacity:1}
+.pill .ix:hover{opacity:1;box-shadow:0 0 0 2px rgba(10,102,194,.22)}
+/* 現值 ≠ 預設值 —— 只在你動過的地方出現 */
+.pill.chg{box-shadow:inset 0 -2px 0 var(--orange)}
+
+.fold{font-size:11px;color:var(--faint);padding:3px 6px;border-radius:5px;
+  border:1px dashed var(--line);cursor:pointer;white-space:nowrap}
+.fold:hover{color:var(--mute);border-color:var(--mute)}
+
+/* 拉桿卡在縫隙上,不是三角形指著 pill —— 綠紅在語意上都是切點,邊界在縫隙不在節點 */
+.hd{width:7px;height:26px;border-radius:3px;flex:0 0 auto;cursor:ew-resize;position:relative}
+.hd.green{background:var(--green)}
+.hd.red{background:var(--red)}
+.hd.ghost{width:2px;height:22px;cursor:default;opacity:.45;
+  background:repeating-linear-gradient(to bottom,currentColor 0 3px,transparent 3px 6px)}
+.hd.ghost.green{color:var(--green);background-color:transparent}
+.hd.ghost.red{color:var(--red);background-color:transparent}
+.hd:not(.ghost):hover{box-shadow:0 0 0 3px rgba(0,0,0,.10)}
+
+/* 分岔:同一列局部裂成兩線再合回來(捷運路線圖),不需要符號或圖例 */
+.fork{display:inline-flex;flex-direction:column;gap:3px;
+  border-left:2px solid var(--faint);border-right:2px solid var(--faint);
+  border-radius:6px;padding:2px 5px;margin:0 2px}
+.branch{display:inline-flex;align-items:center;gap:3px}
+.branch.off{opacity:.4}
+.branch.off .pill{background:transparent;border:1px dashed var(--line)}
+.branch .empty{font-size:11px;color:var(--faint);font-family:var(--mono)}
+.btog{font-size:10.5px;color:var(--mute);border:1px solid var(--line);border-radius:4px;
+  padding:1px 5px;margin-left:4px;cursor:pointer;background:var(--bg)}
+.btog:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ---------- 預覽列表 = 差異檢視器 ----------
+   消失的列位置保留不重排,否則整份列表會跳動、眼睛得重找位置。 */
+#gp-list{padding:6px 12px 10px}
+.lrow{display:flex;gap:8px;align-items:baseline;padding:2px 4px;border-radius:4px;cursor:pointer}
+.lrow:hover{background:var(--panel)}
+.lrow .li{font-family:var(--mono);font-size:11px;color:var(--faint);width:1.6em;text-align:right;flex:0 0 auto}
+.lrow .lt{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lrow .lt.empty{color:var(--red);font-style:italic}
+.lrow.ex{background:rgba(200,16,46,.07)}
+.lrow.add{background:rgba(10,102,194,.13)}
+.lrow.drop{opacity:.4}
+.lrow.drop .lt{text-decoration:line-through}
+.lmore{display:block;font-size:11px;color:var(--faint);padding:3px 4px}
+
+#gp-count{white-space:nowrap;font-weight:700;color:var(--blue)}
+#gp-count.pv{color:var(--orange)}
+#gp-msg{color:var(--orange);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<header class="sandbox">
+  <label>
+    <span class="switch"><input type="checkbox" id="tool-on"><span class="track"><span class="thumb"></span></span></span>
+    <span>擷取模式</span>
+  </label>
+  <label>假資料
+    <select id="fixture">
+      <option value="clean">乾淨 fixture(語意標籤)</option>
+      <option value="google">google 搜尋結果(真實)</option>
+      <option value="stretch">案例二 · 鋪滿整列的連結</option>
+      <option value="deco">案例一 · 裝飾層</option>
+    </select>
+  </label>
+  <span class="sp"></span>
+  <span class="hint" id="phase-hint">關閉中</span>
+</header>
+
+<main id="fx"></main>
+
+<template id="fx-clean">
+<section class="panel-box">
+  <h2>推薦讀物</h2>
+  <div class="panel-note">共 8 筆,依熱門度排序</div>
+  <div class="panel-body">
+    <div class="grid">
+      <ul class="col">
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 是什麼</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 教學</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 工具</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">Python 單元測試</span></a></div></li>
+      </ul>
+      <ul class="col">
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 怎麼寫</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 範例</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 意思</span></a></div></li>
+        <li class="item"><div class="card"><a class="link" href="#"><span class="label">單元測試 case</span></a></div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+</template>
+
+<template id="fx-stretch">
+<table class="rows">
+  <thead><tr><th>日期</th><th>對象</th><th>金額</th></tr></thead>
+  <tbody>
+    <tr class="row"><td>2026-01-03<a class="stretch" href="#"></a></td><td>某某公司</td><td>1,234</td></tr>
+    <tr class="row"><td>2026-01-04<a class="stretch" href="#"></a></td><td>什什行店</td><td>987</td></tr>
+    <tr class="row"><td>2026-01-05<a class="stretch" href="#"></a></td><td>大大集團</td><td>5,432</td></tr>
+    <tr class="row"><td>2026-01-06<a class="stretch" href="#"></a></td><td>小小工作室</td><td>210</td></tr>
+    <tr class="row"><td>2026-01-07<a class="stretch" href="#"></a></td><td>中中企業</td><td>3,600</td></tr>
+    <tr class="row"><td>2026-01-08<a class="stretch" href="#"></a></td><td>方方科技</td><td>78</td></tr>
+    <tr class="row"><td>2026-01-09<a class="stretch" href="#"></a></td><td>圓圓貿易</td><td>4,050</td></tr>
+    <tr class="row"><td>2026-01-10<a class="stretch" href="#"></a></td><td>長長物流</td><td>1,999</td></tr>
+  </tbody>
+</table>
+</template>
+
+<template id="fx-deco">
+<section class="demo">
+  <h2>X · 裝飾層夾在路徑中間(li[1]/a vs li[2]/div.promo/a)</h2>
+  <ul class="list">
+    <li class="item"><a class="t" href="#">項目 A</a></li>
+    <li class="item"><div class="promo"><a class="t" href="#">項目 B(推薦)</a></div></li>
+    <li class="item"><a class="t" href="#">項目 C</a></li>
+    <li class="item"><a class="t" href="#">項目 D</a></li>
+  </ul>
+</section>
+<section class="demo">
+  <h2>Y · 分歧在相對路徑頂端(article vs aside/article)</h2>
+  <div class="feed">
+    <article class="post"><h3>標題 A</h3><p class="meta">2026-01-01</p></article>
+    <aside class="promo"><article class="post"><h3>標題 B</h3><p class="meta">2026-01-02</p></article></aside>
+    <article class="post"><h3>標題 C</h3><p class="meta">2026-01-03</p></article>
+    <article class="ad">贊助內容(誘餌:沒有 h3 與 p)</article>
+  </div>
+</section>
+</template>
+
+<template id="fx-google">
+<div id="bres"><div class="ULSxyf"><div class="MjjYud"><div data-abe="" data-hveid="CC0QAA" data-ved="2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ26YDegQILRAA"><div class="oIk2Cb"><div class="M6HR1c PJI6ge adDDi"><span class="mgAbYb RES9jf YC72Wc IFnjPb JGD2rd" aria-level="2" role="heading">其他人也搜尋了以下項目</span><span class="YR2tRd"></span></div><div class="y6Uyqe"><div class="EIaa9b"><div class="AJLUJb"><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CC4QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%98%AF+%E4%BB%80%E9%BA%BC&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAguEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>是 什麼</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CEQQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%95%99%E5%AD%B8&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAhEEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>教學</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CD4QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E5%B7%A5%E5%85%B7&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg-EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>工具</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CD0QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Python+unit+test&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg9EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd"><b>Python</b> unit test</span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div></div><div class="AJLUJb"><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDwQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%80%8E%E9%BA%BC+%E5%AF%AB&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg8EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>怎麼 寫</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDgQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E7%AF%84%E4%BE%8B&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg4EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>範例</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDAQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%84%8F%E6%80%9D&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAgwEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>意思</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CC8QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+case&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAgvEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>case</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div></div></div></div></div></div></div></div></div>
+</template>
+<div id="gp-overlay"></div>
+<div id="gp-tip"></div>
+
+<div id="gp-panel">
+  <div class="head">
+    <b>擷取</b>
+    <span id="gp-phase"></span>
+    <span class="sp"></span>
+    <button class="gp" id="btn-add">加範例</button>
+    <button class="gp" id="btn-txtmode">文字</button>
+    <button class="gp" id="btn-clear">清除</button>
+    <button class="gp" id="btn-min">－</button>
+  </div>
+  <div class="body">
+    <div id="gp-rowwrap"><div id="gp-row"></div></div>
+    <div id="gp-list"></div>
+  </div>
+  <div class="foot">
+    <button class="gp" id="btn-copy" disabled>複製</button>
+    <button class="gp" id="btn-extract" disabled>抽取文字</button>
+    <span id="gp-count"></span>
+    <span class="sp"></span>
+    <span id="gp-msg"></span>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ═════════ 小工具 ═════════ */
+const $ = s => document.querySelector(s);
+const UI = el => !!(el && el.closest && el.closest('#gp-panel,#gp-overlay,#gp-tip,header.sandbox'));
+const norm = s => String(s).replace(/\s+/g, ' ').trim();
+const esc = s => String(s).replace(/[&<>"]/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]));
+const clip = (s, n) => { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
+
+const TXTMODES = [
+  { label:'文字', tip:'innerText:所見即所得', get: el => el.innerText },
+  { label:'直屬', tip:'只取直屬文字節點,不展開巢狀',
+    get: el => [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.data).join('') },
+  { label:'標記', tip:'innerHTML:連標籤一起輸出', get: el => el.innerHTML }
+];
+let txtMode = 0;
+const getTxt = el => norm(TXTMODES[txtMode].get(el));
+
+const tagIdx = el => { let i = 1, s = el; while ((s = s.previousElementSibling)) if (s.tagName === el.tagName) i++; return i; };
+const ancAt = (el, n) => { let e = el; while (n-- > 0 && e) e = e.parentElement; return e; };
+const segsUp = (el, anc) => {
+  const a = []; let e = el;
+  while (e && e !== anc) { a.unshift({ tag: e.tagName.toLowerCase(), idx: tagIdx(e), el: e }); e = e.parentElement; }
+  return a;
+};
+const absPath = el => '/' + segsUp(el, null).map(s => s.tag + '[' + s.idx + ']').join('/');
+const label = el => el.tagName.toLowerCase() + (el.id ? '#' + el.id : '')
+  + (el.classList.length ? '.' + [...el.classList].slice(0, 2).join('.') : '');
+const ncaOf = els => {
+  let a = els[0].parentElement;
+  while (a && !els.every(e => a.contains(e) && a !== e)) a = a.parentElement;
+  return a;
+};
+const docOrder = (a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+
+/* ═════════ 狀態 ═════════ */
+let on = false, phase = 'idle';          /* idle | select | tune | add */
+let examples = [];                       /* {origin, enabled} */
+let redUp = 0, greenUp = 0;
+let overrides = new Map();               /* node.key → 'idx' | 'bare' */
+let openRuns = new Set();                /* 'L' | 'R' — 手動展開的摺疊段 */
+let expandAll = false;                   /* 拖曳中:全展開 */
+let G = null, matched = [], preview = null;
+let hoverEl = null, dragging = null, pendingDestructive = null;
+
+const LIST_N = 12;
+
+/* ═════════ 幾何 ═════════
+   紅框與綠框是同一條線上的兩個切點:綠框是求值的根(不在查詢式裏),紅框是被命中的東西本身。
+   兩者各自只往 ancestor 方向離開原始位置,可動範圍首尾相接且不重疊,NCA 是固定樞紐。 */
+
+/* 紅拉桿的合法停點:所有範例在該層的標籤必須一致(對不齊的層不給停,否則兩個紅框
+   會落在不可比的深度,命中集合失去意義)。往上走到彼此重疊或吃掉 body 就停。 */
+function validStops(origins) {
+  const out = [];
+  for (let r = 0; ; r++) {
+    const els = origins.map(o => ancAt(o, r));
+    if (els.some(e => !e || e === document.body || e === document.documentElement)) break;
+    let bad = false;
+    for (let i = 0; i < els.length && !bad; i++)
+      for (let j = 0; j < els.length; j++)
+        if (i !== j && (els[i] === els[j] || els[i].contains(els[j]))) { bad = true; break; }
+    if (bad) break;
+    if (!ncaOf(els)) break;
+    if (els.every(e => e.tagName === els[0].tagName)) out.push(r);
+  }
+  return out;
+}
+
+function greenStrip(nca) {
+  const out = []; let e = nca, k = 0;
+  while (e) { out.unshift({ el: e, k }); if (e === document.documentElement) break; e = e.parentElement; k++; }
+  return out;
+}
+
+/* 純函式:給定邊界回傳完整幾何。預覽與拖曳都用它試算,不動 G。 */
+function computeGeom(gUp, rUp) {
+  if (examples.length < 2) return null;
+  const origins = examples.map(e => e.origin);
+  const stops = validStops(origins);
+  if (!stops.length) return null;
+  const r = stops.includes(rUp) ? rUp : (stops.filter(s => s <= rUp).pop() ?? stops[0]);
+  const reds = origins.map(o => ancAt(o, r));
+  const nca = ncaOf(reds);
+  if (!nca) return null;
+
+  const strip = greenStrip(nca);
+  const maxG = strip.length - 1;
+  const g = Math.min(Math.max(gUp, 0), maxG);
+  const green = strip[maxG - g].el;
+
+  const paths = reds.map(rd => segsUp(rd, nca));
+  paths.forEach(p => p.forEach((s, i) => { s.r = r + (p.length - 1 - i); }));
+
+  /* 共同結尾:從尾端逐層比對「標籤」。序號相異不影響 —— 那一層改用 forced bare 即可,
+     所以 v3 的共同結尾比 v2(要求 tag+idx 全等)長。 */
+  let L = 0;
+  const minLen = Math.min(...paths.map(p => p.length));
+  while (L < minLen) {
+    const t = paths[0][paths[0].length - 1 - L].tag;
+    if (paths.every(p => p[p.length - 1 - L].tag === t)) L++; else break;
+  }
+
+  const prefixes = paths.map(p => p.slice(0, p.length - L));
+  const fork = prefixes.some(p => p.length > 0);
+
+  /* 相同形狀的範例併成同一條分支。分支的身分是「形狀」(標籤序列)而不是 tag+idx ——
+     否則 li[1] 與 li[3] 會變成兩條畫起來一模一樣的冗餘分支。序號相異時該層自然
+     forced bare,跟共同結尾的處理完全一致。 */
+  const bmap = new Map();
+  prefixes.forEach((p, i) => {
+    const sig = p.map(s => s.tag).join('/');
+    if (!bmap.has(sig)) bmap.set(sig, { sig, cols: p.map(s => [s]), exs: [] });
+    else p.forEach((s, k) => bmap.get(sig).cols[k].push(s));
+    bmap.get(sig).exs.push(i);
+  });
+  const branches = [...bmap.values()];
+  branches.forEach(b => { b.enabled = b.exs.some(i => examples[i].enabled); });
+
+  const chain = segsUp(nca, green);
+  chain.forEach((s, i) => { s.k = chain.length - 1 - i; });
+
+  const geom = { reds, nca, green, gUp: g, rUp: r, stops, strip, paths, L, branches, chain, fork };
+  buildNodes(geom);
+  return geom;
+}
+
+/* ═════════ pill 節點 ═════════ */
+function buildNodes(geom) {
+  const nodes = [];
+  geom.chainNodes = geom.chain.map(s =>
+    mk({ kind:'chain', tag:s.tag, idxs:[s.idx], els:[s.el], key:s.el, k:s.k }));
+  geom.branches.forEach((b, bi) => {
+    b.nodes = b.cols.map(col => mk({ kind:'prefix', tag:col[0].tag, idxs:col.map(s => s.idx),
+      els:col.map(s => s.el), key:'B' + b.sig + '@' + col[0].r, r:col[0].r, branch:bi }));
+  });
+  geom.sufNodes = [];
+  for (let j = geom.L - 1; j >= 0; j--) {
+    const segs = geom.paths.map(p => p[p.length - 1 - j]);
+    geom.sufNodes.push(mk({ kind:'suffix', tag:segs[0].tag, idxs:segs.map(s => s.idx),
+      els:segs.map(s => s.el), key:'S@' + (geom.rUp + j), r: geom.rUp + j }));
+  }
+  function mk(n) { nodes.push(n); return n; }
+  geom.nodes = nodes;
+  geom.terminal = geom.sufNodes[geom.sufNodes.length - 1] || null;
+
+  for (const n of nodes) {
+    n.forced = n.idxs.some(i => i !== n.idxs[0]);      /* 序號沒有可比性 → 只能 bare */
+    n.def = (n === geom.terminal && !n.forced) ? 'idx' : 'bare';
+    n.state = n.forced ? 'bare' : n.def;
+    if (!n.forced && overrides.has(n.key)) n.state = overrides.get(n.key);
+  }
+}
+
+const segStr = n => n.tag + (n.state === 'idx' ? '[' + n.idxs[0] + ']' : '');
+
+function exprOf(geom, root) {
+  root = root || '.';
+  if (!geom) return null;
+  const c = geom.chainNodes.map(segStr).join('/');
+  const suf = geom.sufNodes.map(segStr).join('/');
+  const head = root + (c ? '/' + c : '');
+  const tail = suf ? '/' + suf : '';
+  if (!geom.fork) return head + tail;
+  const bs = geom.branches.filter(b => b.enabled).map(b => {
+    const p = b.nodes.map(segStr).join('/');
+    return head + (p ? '/' + p : '');
+  });
+  if (!bs.length) return null;
+  if (bs.length === 1) return bs[0] + tail;
+  return '(' + bs.join(' | ') + ')' + tail;
+}
+
+function evalIn(expr, root) {
+  if (!expr || !root) return null;
+  try {
+    const it = document.evaluate(expr, root, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+    const out = [];
+    for (let i = 0; i < it.snapshotLength; i++) out.push(it.snapshotItem(i));
+    return out;
+  } catch (e) { return null; }
+}
+const runOf = geom => evalIn(exprOf(geom), geom && geom.green) || [];
+
+/* ═════════ 鎖定判定 ═════════
+   把其他所有開關設成 bare,在那個基準下比較這一顆的開與關。相同 ⇒ 永久無關。
+   純 child 軸下每個候選的祖先鏈唯一,Result = C ∩ ⋂ⱼPⱼ,各層條件獨立相交;
+   其他全 bare 時 ⋂_{j≠k}Pⱼ = 全集,量到的正是 C ⊆ P_k —— sound 且 complete。 */
+function analyze(geom) {
+  const save = geom.nodes.map(n => n.state);
+  const cnt = () => runOf(geom).length;
+
+  geom.nodes.forEach(n => { if (!n.forced) n.state = 'bare'; });
+  for (const n of geom.nodes) {
+    if (n.forced) { n.permaLock = true; continue; }
+    n.state = 'idx'; const a = cnt();
+    n.state = 'bare'; const b = cnt();
+    n.permaLock = (a === b);
+  }
+  geom.nodes.forEach((n, i) => { n.state = n.permaLock ? 'bare' : save[i]; });
+  geom.nodes.forEach(n => { if (n.permaLock) overrides.delete(n.key); });
+
+  for (const n of geom.nodes) {
+    if (n.permaLock) { n.visible = false; continue; }
+    const s = n.state;
+    n.state = 'idx'; const a = cnt();
+    n.state = 'bare'; const b = cnt();
+    n.state = s;
+    n.visible = (a !== b);          /* 可見 ⟺ 點下去必然改變命中集合 */
+  }
+}
+
+/* ═════════ 試算 ═════════ */
+function matchesIfNode(n, state) {
+  const s = n.state; n.state = state;
+  const r = runOf(G);
+  n.state = s; return r;
+}
+function matchesIfBound(gUp, rUp) {
+  const m = computeGeom(gUp, rUp);
+  return m ? runOf(m) : [];
+}
+function matchesIfBranch(bi) {
+  const b = G.branches[bi], was = b.enabled;
+  b.enabled = !was;
+  const r = exprOf(G) ? runOf(G) : [];
+  b.enabled = was; return r;
+}
+
+/* ═════════ overlay ═════════ */
+const ov = $('#gp-overlay'), tipEl = $('#gp-tip');
+let boxes = [];
+function paintBoxes() {
+  const f = document.createDocumentFragment();
+  for (const b of boxes) {
+    const r = b.el.getBoundingClientRect();
+    const p = b.pad || 0;
+    const d = document.createElement('div');
+    d.className = 'bx ' + b.kind;
+    d.style.left = (r.left - p) + 'px'; d.style.top = (r.top - p) + 'px';
+    d.style.width = Math.max(0, r.width + p * 2) + 'px';
+    d.style.height = Math.max(0, r.height + p * 2) + 'px';
+    f.appendChild(d);
+  }
+  ov.replaceChildren(f);
+}
+/* 綠 = 完全在外(p+3);藍 = 騎在邊框上(p+1);紅 = 內填色(p0,不畫線)。
+   三種不同編碼而非三個同心環 —— 範例元素同時也是命中元素,同心環會變成相距 2px 的平行線。 */
+function rebuildBoxes() {
+  boxes = [];
+  if (hoverEl) boxes.push({ el: hoverEl, kind: 'hover', pad: 0 });
+  if (G && G.green) boxes.push({ el: G.green, kind: 'green', pad: 3 });
+  const cur = new Set(matched), pv = preview ? new Set(preview) : null;
+  const shown = pv ? [...new Set([...cur, ...pv])] : matched;
+  for (const el of shown) {
+    const kind = !pv ? 'blue' : (pv.has(el) ? (cur.has(el) ? 'blue' : 'blue-add') : 'blue-drop');
+    boxes.push({ el, kind, pad: 1 });
+  }
+  if (G) examples.forEach((ex, i) => {
+    const rd = G.reds[i]; if (!rd) return;
+    boxes.push({ el: rd, kind: ex.enabled ? 'red' : 'red-off', pad: 0 });
+  });
+  paintBoxes();
+}
+let raf = 0;
+const schedule = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; paintBoxes(); }); };
+addEventListener('scroll', schedule, true);
+addEventListener('resize', schedule);
+
+/* 預覽只動:頁面藍框、命中數、列表。pills 的存在/寬度/位置一律凍結。 */
+function setPreview(next) { preview = next || []; rebuildBoxes(); renderCount(); renderList(); }
+function clearPreview() { if (!preview) return; preview = null; rebuildBoxes(); renderCount(); renderList(); }
+
+/* ═════════ 面板 ═════════ */
+const panel = $('#gp-panel'), rowEl = $('#gp-row'), listEl = $('#gp-list');
+function toast(t) {
+  const m = $('#gp-msg'); m.textContent = t;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { if (m.textContent === t) m.textContent = ''; }, 3000);
+}
+const el = (cls, txt) => { const d = document.createElement('span'); d.className = cls; if (txt != null) d.textContent = txt; return d; };
+
+function pillEl(n) {
+  const p = el('pill');
+  if (n.visible && n.state !== n.def) p.classList.add('chg');
+  p.appendChild(el('tag', n.tag));
+  if (n.visible) {
+    const ix = el('ix' + (n.state === 'idx' ? ' on' : ''), '[' + n.idxs[0] + ']');
+    ix.addEventListener('mouseenter', () => setPreview(matchesIfNode(n, n.state === 'idx' ? 'bare' : 'idx')));
+    ix.addEventListener('mouseleave', clearPreview);
+    ix.addEventListener('click', e => {
+      e.stopPropagation();
+      const next = n.state === 'idx' ? 'bare' : 'idx';
+      overrides.set(n.key, next); clearPreview(); rebuild();
+    });
+    p.appendChild(ix);
+  }
+  if (n.r != null && G.stops.includes(n.r)) p.dataset.rstop = n.r;
+  if (n.k != null) p.dataset.gstop = n.k;
+  return p;
+}
+
+function dimPill(e_, opts) {
+  const p = el('pill dim');
+  p.appendChild(el('tag', e_.tagName.toLowerCase()));
+  if (opts.gstop != null) {
+    p.dataset.gstop = opts.gstop;
+    p.addEventListener('mouseenter', () => setPreview(matchesIfBound(opts.gstop, redUp)));
+    p.addEventListener('mouseleave', clearPreview);
+  }
+  if (opts.rstop != null) {
+    p.dataset.rstop = opts.rstop;
+    p.addEventListener('mouseenter', () => setPreview(matchesIfBound(greenUp, opts.rstop)));
+    p.addEventListener('mouseleave', clearPreview);
+  }
+  if (opts.green) p.classList.add('isgreen');
+  return p;
+}
+
+function foldChip(n, side) {
+  const c = el('fold', '⋯ ' + n + ' 層 ⋯');
+  c.addEventListener('click', () => { openRuns.has(side) ? openRuns.delete(side) : openRuns.add(side); render(); });
+  return c;
+}
+
+function handleEl(kind) {
+  const h = el('hd ' + kind);
+  h.title = kind === 'green'
+    ? '往左:連更上層一起比對(抓更多筆)'
+    : '往左:抓更外層的整塊(每筆包更多)';
+  h.addEventListener('mousedown', e => startDrag(e, kind));
+  return h;
+}
+const ghostEl = kind => el('hd ghost ' + kind);
+
+function renderRow() {
+  rowEl.replaceChildren();
+  if (!G) return;
+  const open = side => expandAll || openRuns.has(side);
+
+  /* 綠框以上:灰、可摺 */
+  const above = G.strip.filter(s => s.k > G.gUp);
+  const keep = open('L') ? above.length : Math.min(2, above.length);
+  if (above.length > keep) rowEl.appendChild(foldChip(above.length - keep, 'L'));
+  above.slice(above.length - keep).forEach(s => rowEl.appendChild(dimPill(s.el, { gstop: s.k })));
+
+  /* 綠框自己:是求值的根,不在查詢式裏 → 灰 */
+  const gEntry = G.strip.find(s => s.k === G.gUp);
+  rowEl.appendChild(dimPill(gEntry.el, { gstop: G.gUp, green: true }));
+  rowEl.appendChild(handleEl('green'));
+
+  /* chain:綠框以下到 NCA。綠框的原始位置是 NCA —— 在現在位置的「右邊」,因為只能往左離開 */
+  G.chainNodes.forEach(n => rowEl.appendChild(pillEl(n)));
+  if (G.gUp !== 0) rowEl.appendChild(ghostEl('green'));
+
+  /* 分岔:同一列局部裂成兩線再合回來 */
+  if (G.fork) {
+    const fk = el('fork');
+    G.branches.forEach((b, bi) => {
+      const br = el('branch' + (b.enabled ? '' : ' off'));
+      if (!b.nodes.length) br.appendChild(el('empty', '（直接）'));
+      b.nodes.forEach(n => br.appendChild(pillEl(n)));
+      const tg = el('btog', b.enabled ? '停用' : '啟用');
+      tg.addEventListener('mouseenter', () => setPreview(matchesIfBranch(bi)));
+      tg.addEventListener('mouseleave', clearPreview);
+      tg.addEventListener('click', () => {
+        const others = G.branches.filter((x, i) => i !== bi && x.enabled);
+        if (b.enabled && !others.length) { toast('至少要留一條分支'); return; }
+        b.exs.forEach(i => { examples[i].enabled = !b.enabled; });
+        clearPreview(); rebuild();
+      });
+      br.appendChild(tg);
+      fk.appendChild(br);
+    });
+    rowEl.appendChild(fk);
+  }
+
+  /* 共同結尾 */
+  G.sufNodes.forEach(n => rowEl.appendChild(pillEl(n)));
+  rowEl.appendChild(handleEl('red'));
+
+  /* 紅框以下到原始點擊處:灰、可摺。紅框的原始位置在最右端(原始點擊處) */
+  const o0 = examples[0].origin;
+  const below = [];
+  for (let r = G.rUp - 1; r >= 0; r--) below.push({ el: ancAt(o0, r), r });
+  const keepR = open('R') ? below.length : Math.min(2, below.length);
+  below.slice(0, keepR).forEach(s =>
+    rowEl.appendChild(dimPill(s.el, G.stops.includes(s.r) ? { rstop: s.r } : {})));
+  if (below.length > keepR) rowEl.appendChild(foldChip(below.length - keepR, 'R'));
+  if (G.rUp !== 0) rowEl.appendChild(ghostEl('red'));
+}
+
+function renderCount() {
+  const c = $('#gp-count');
+  if (!G) { c.textContent = ''; return; }
+  const base = matched.length;
+  if (preview) { c.innerHTML = '共 ' + base + ' 筆 → <b>' + preview.length + ' 筆</b>'; c.classList.add('pv'); }
+  else { c.textContent = '共 ' + base + ' 筆'; c.classList.remove('pv'); }
+}
+
+/* 列表 = 差異檢視器。消失的列位置保留不重排,否則整份列表會跳動、眼睛得重找位置。 */
+function renderList() {
+  listEl.replaceChildren();
+  if (!G) return;
+  const cur = new Set(matched), pv = preview ? new Set(preview) : null;
+  const all = pv ? [...new Set([...matched, ...preview])].sort(docOrder) : matched;
+  const reds = new Set(G.reds);
+  all.slice(0, LIST_N).forEach((e_, i) => {
+    const row = el('lrow');
+    if (pv && !pv.has(e_)) row.classList.add('drop');
+    else if (pv && !cur.has(e_)) row.classList.add('add');
+    if (reds.has(e_)) row.classList.add('ex');
+    row.appendChild(el('li', String(i + 1)));
+    const t = getTxt(e_);
+    const tx = el('lt' + (t ? '' : ' empty'), t ? clip(t, 90) : '(空)');
+    row.appendChild(tx);
+    row.addEventListener('mouseenter', () => { hoverEl = e_; rebuildBoxes(); });
+    row.addEventListener('mouseleave', () => { hoverEl = null; rebuildBoxes(); });
+    row.addEventListener('click', () => e_.scrollIntoView({ block:'center', behavior:'smooth' }));
+    listEl.appendChild(row);
+  });
+  if (all.length > LIST_N) listEl.appendChild(el('lmore', '⋯ 還有 ' + (all.length - LIST_N) + ' 筆'));
+}
+
+function render() {
+  $('#gp-phase').textContent =
+    phase === 'select' ? '框選中 ' + examples.length + '/2'
+    : phase === 'add' ? '點一個要加入的範例'
+    : phase === 'tune' ? '調校中' : '';
+  $('#phase-hint').textContent = !on ? '關閉中'
+    : phase === 'select' ? '點兩個看起來同一類的東西'
+    : phase === 'add' ? '點一個目前沒抓到的同類元素'
+    : '拖拉桿改範圍 · 點序號改鬆緊 · 右鍵紅框可移除';
+  $('#btn-txtmode').textContent = TXTMODES[txtMode].label;
+  $('#btn-txtmode').title = TXTMODES[txtMode].tip;
+  const ready = !!G;
+  $('#btn-copy').disabled = !ready; $('#btn-extract').disabled = !ready;
+  $('#btn-add').disabled = !ready || phase === 'add';
+  renderRow(); renderCount(); renderList();
+}
+
+/* ═════════ 重算 ═════════ */
+function rebuild() {
+  preview = null;
+  G = computeGeom(greenUp, redUp);
+  if (G) {
+    greenUp = G.gUp; redUp = G.rUp;
+    analyze(G);
+    matched = runOf(G);
+  } else matched = [];
+  rebuildBoxes(); render();
+}
+function resetAll() {
+  examples = []; overrides.clear(); openRuns.clear();
+  redUp = 0; greenUp = 0; G = null; matched = []; preview = null;
+  hoverEl = null; dragging = null; pendingDestructive = null;
+  phase = on ? 'select' : 'idle';
+  tipEl.style.display = 'none';
+  rebuild();
+}
+
+/* ═════════ 拉桿拖曳 ═════════
+   按下即全展開(摺疊只是靜態顯示優化);拖曳中 pills 版面凍結,只有拉桿位置、
+   灰/不灰、藍框與命中數會動。放開才重算版面。 */
+function startDrag(e, kind) {
+  e.preventDefault(); e.stopPropagation();
+  expandAll = true; render();
+  const sel = kind === 'green' ? '[data-gstop]' : '[data-rstop]';
+  const attr = kind === 'green' ? 'gstop' : 'rstop';
+  const stops = [...rowEl.querySelectorAll(sel)].map(p => {
+    const r = p.getBoundingClientRect();
+    return { v: +p.dataset[attr], x: r.right };
+  });
+  if (!stops.length) { expandAll = false; render(); return; }
+  const hd = rowEl.querySelector('.hd.' + kind + ':not(.ghost)');
+  const base = hd.getBoundingClientRect().left;
+  dragging = { kind, stops, hd, base, v: kind === 'green' ? greenUp : redUp };
+}
+addEventListener('mousemove', e => {
+  if (!dragging) return;
+  let best = dragging.stops[0];
+  for (const s of dragging.stops) if (Math.abs(s.x - e.clientX) < Math.abs(best.x - e.clientX)) best = s;
+  dragging.hd.style.transform = 'translateX(' + (best.x - dragging.base) + 'px)';
+  if (best.v !== dragging.v) {
+    dragging.v = best.v;
+    const g = dragging.kind === 'green' ? best.v : greenUp;
+    const r = dragging.kind === 'green' ? redUp : best.v;
+    setPreview(matchesIfBound(g, r));
+  }
+}, true);
+addEventListener('mouseup', () => {
+  if (!dragging) return;
+  const d = dragging; dragging = null; expandAll = false;
+  if (d.kind === 'green') greenUp = d.v; else redUp = d.v;
+  clearPreview(); rebuild();
+}, true);
+
+/* ═════════ 頁面互動 ═════════ */
+const picking = () => phase === 'select' || phase === 'add';
+function onMove(e) {
+  if (!on || !picking()) return;
+  const t = document.elementFromPoint(e.clientX, e.clientY);
+  if (!t || UI(t) || t === document.body || t === document.documentElement) {
+    hoverEl = null; tipEl.style.display = 'none'; rebuildBoxes(); return;
+  }
+  hoverEl = t;
+  tipEl.style.display = 'block';
+  tipEl.style.left = Math.min(e.clientX + 12, innerWidth - 300) + 'px';
+  tipEl.style.top = (e.clientY + 18) + 'px';
+  tipEl.textContent = label(t);
+  rebuildBoxes();
+  if (phase === 'add' && G) {
+    const probe = tryAdd(t);
+    if (probe) setPreview(probe.matched); else clearPreview();
+  }
+}
+/* 加第三個範例分兩類:符合現有共同結尾 = 只多一條岔路(安全);不符合 = 共同結尾被迫
+   縮短、紅框上移、部分開關失效(破壞性)。破壞性不擋,但要二次確認。 */
+function tryAdd(t) {
+  if (examples.some(x => x.origin === t || x.origin.contains(t) || t.contains(x.origin))) return null;
+  const save = examples;
+  examples = save.concat([{ origin: t, enabled: true }]);
+  const m = computeGeom(greenUp, redUp);
+  examples = save;
+  if (!m) return null;
+  return { geom: m, matched: runOf(m), destructive: m.rUp !== G.rUp || m.L !== G.L };
+}
+function onClick(e) {
+  if (!on || !picking() || UI(e.target)) return;
+  e.preventDefault(); e.stopPropagation();
+  const t = hoverEl; if (!t) return;
+  if (examples.some(x => x.origin === t || x.origin.contains(t) || t.contains(x.origin))) {
+    toast('與現有範例巢狀,請點平行的元素'); return;
+  }
+  if (phase === 'add') {
+    const probe = tryAdd(t);
+    if (!probe) { toast('這個元素無法跟現有範例組成查詢式'); return; }
+    if (probe.destructive && pendingDestructive !== t) {
+      pendingDestructive = t;
+      toast('會縮短查詢式、部分調校失效 — 再點一次確認');
+      return;
+    }
+    pendingDestructive = null;
+    examples.push({ origin: t, enabled: true });
+    phase = 'tune'; hoverEl = null; tipEl.style.display = 'none';
+    clearPreview(); rebuild(); return;
+  }
+  examples.push({ origin: t, enabled: true });
+  if (examples.length === 2) { phase = 'tune'; hoverEl = null; tipEl.style.display = 'none'; }
+  rebuild();
+}
+function onCtx(e) {
+  if (!on || UI(e.target) || !G) return;
+  const t = document.elementFromPoint(e.clientX, e.clientY);
+  const ix = G.reds.findIndex(r => r === t || r.contains(t));
+  if (ix < 0) return;
+  e.preventDefault(); e.stopPropagation();
+  examples.splice(ix, 1);
+  if (examples.length < 2) { phase = 'select'; overrides.clear(); redUp = 0; greenUp = 0; }
+  clearPreview(); rebuild();
+}
+const swallow = e => { if (on && picking() && !UI(e.target)) { e.preventDefault(); e.stopPropagation(); } };
+addEventListener('mousemove', onMove, true);
+addEventListener('click', onClick, true);
+addEventListener('contextmenu', onCtx, true);
+addEventListener('mousedown', swallow, true);
+addEventListener('mouseup', swallow, true);
+addEventListener('keydown', e => { if (e.key === 'Escape' && on) $('#tool-on').click(); }, true);
+
+/* ═════════ 輸出 ═════════
+   一條字串。錨點的耐久度比 predicate 重要一個量級 —— 全序號絕對路徑遇到頁首多一個
+   banner 就報廢,所以優先用 id / class。 */
+function anchorExpr(target) {
+  let e = target; const tail = []; let up = 0;
+  while (e && up < 8) {
+    if (e.id) {
+      const x = '//*[@id="' + e.id + '"]';
+      const hit = evalIn(x, document);
+      if (hit && hit.length === 1) return x + (tail.length ? '/' + tail.join('/') : '');
+    }
+    for (const c of e.classList) {
+      if (!/^[A-Za-z][\w-]*$/.test(c)) continue;
+      const x = '//*[contains(concat(" ",normalize-space(@class)," ")," ' + c + ' ")]';
+      const hit = evalIn(x, document);
+      if (hit && hit.length === 1) return x + (tail.length ? '/' + tail.join('/') : '');
+    }
+    if (!e.parentElement) break;
+    tail.unshift(e.tagName.toLowerCase() + '[' + tagIdx(e) + ']');
+    e = e.parentElement; up++;
+  }
+  return absPath(target);
+}
+const outputExpr = () => G ? exprOf(G, anchorExpr(G.green)) : null;
+
+function copyText(t, okMsg) {
+  const done = () => toast(okMsg);
+  if (navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(t).then(done, () => fallback(t, done));
+  else fallback(t, done);
+}
+function fallback(t, done) {
+  const ta = document.createElement('textarea');
+  ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+  document.body.appendChild(ta); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+  ta.remove();
+  ok ? done() : toast('複製失敗');
+}
+
+/* ═════════ 沙盒 chrome ═════════ */
+function loadFixture(which) {
+  const t = document.getElementById('fx-' + (['clean','google','stretch','deco'].includes(which) ? which : 'clean'));
+  $('#fx').replaceChildren(t.content.cloneNode(true));
+  resetAll();
+}
+$('#fixture').addEventListener('change', e => loadFixture(e.target.value));
+$('#tool-on').addEventListener('change', e => {
+  on = e.target.checked; panel.classList.toggle('on', on); resetAll();
+});
+$('#btn-clear').addEventListener('click', resetAll);
+$('#btn-add').addEventListener('click', () => {
+  if (!G) return;
+  phase = 'add'; pendingDestructive = null; render();
+});
+$('#btn-txtmode').addEventListener('click', () => { txtMode = (txtMode + 1) % TXTMODES.length; render(); });
+$('#btn-min').addEventListener('click', () => panel.classList.toggle('min'));
+$('#btn-copy').addEventListener('click', () => {
+  const x = outputExpr();
+  x ? copyText(x, '已複製:' + clip(x, 60)) : toast('沒有可複製的查詢式');
+});
+$('#btn-extract').addEventListener('click', () =>
+  copyText(matched.map(getTxt).join('\n'), '已複製 ' + matched.length + ' 筆'));
+
+(() => {
+  const head = panel.querySelector('.head');
+  let sx = 0, sy = 0, ox = 0, oy = 0, drag = false;
+  head.addEventListener('mousedown', e => {
+    if (e.target.tagName === 'BUTTON') return;
+    const r = panel.getBoundingClientRect();
+    panel.style.left = r.left + 'px'; panel.style.top = r.top + 'px';
+    panel.style.right = 'auto'; panel.style.bottom = 'auto';
+    sx = e.clientX; sy = e.clientY; ox = r.left; oy = r.top; drag = true;
+    e.preventDefault(); e.stopPropagation();
+  }, true);
+  addEventListener('mousemove', e => {
+    if (!drag) return;
+    panel.style.left = Math.max(4, ox + e.clientX - sx) + 'px';
+    panel.style.top = Math.max(4, oy + e.clientY - sy) + 'px';
+  }, true);
+  addEventListener('mouseup', () => { drag = false; }, true);
+})();
+
+loadFixture('clean');
+})();
+</script>
+</body>
+</html>
