@@ -119,12 +119,13 @@ button.gp:disabled{opacity:.45;cursor:default}
    括號內 = 查詢式。左右兩側(綠框以上、紅框以下)灰掉並摺疊 ——
    「無法調節的節點自動坍縮」不需要另一套規則:在不在邊界內就是規則。 */
 #gp-rowwrap{overflow-x:auto;overflow-y:hidden;padding:12px 12px 10px;border-bottom:1px solid var(--line)}
-#gp-row{display:flex;align-items:center;gap:3px;white-space:nowrap;min-height:30px;width:max-content}
-.pill{display:inline-flex;align-items:center;font-family:var(--mono);font-size:12px;
+#gp-row{display:flex;align-items:center;gap:3px;white-space:nowrap;min-height:30px;
+  width:max-content;padding-top:13px}
+.pill{display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:12px;
   padding:3px 6px;border-radius:5px;background:#eef1f4;color:var(--fg);position:relative}
 .pill.dim{background:transparent;color:var(--faint)}
-.pill.dim[data-gstop],.pill.dim[data-rstop]{cursor:default}
-.pill.dim[data-gstop]:hover,.pill.dim[data-rstop]:hover{background:#f4f6f8;color:var(--mute)}
+.pill.lock{color:var(--mute)}
 .pill.isgreen{color:var(--green);font-weight:700}
 .pill .tag{pointer-events:none}
 /* 序號片:實心 = 查詢式裏真的有 [n];空心 = 真的沒有。畫面即查詢式,不需要翻譯。 */
@@ -135,19 +136,32 @@ button.gp:disabled{opacity:.45;cursor:default}
 /* 現值 ≠ 預設值 —— 只在你動過的地方出現 */
 .pill.chg{box-shadow:inset 0 -2px 0 var(--orange)}
 
-.fold{font-size:11px;color:var(--faint);padding:3px 6px;border-radius:5px;
+/* 抽象化:整顆 pill 就是開關。灰 = 不能按;實心 = 序號開著;空心 = 序號關著。
+   沒有開關的 pill 一律沒有 hover 效果 —— 會亮的東西必須是能按的東西。 */
+.pill.abs{min-width:22px;height:17px;padding:0 4px;border-radius:4px}
+.pill.abs.lock{background:#dde2e8}
+.pill.abs.dim{background:transparent;border:1px dashed #ccd3da}
+.pill.abs.isgreen{border-color:var(--green);border-style:solid}
+.pill.abs.on{background:var(--blue);cursor:pointer}
+.pill.abs.off{background:var(--bg);border:2px solid var(--blue);cursor:pointer}
+.pill.abs.on:hover,.pill.abs.off:hover{box-shadow:0 0 0 3px rgba(10,102,194,.22)}
+.pill.abs.chg{box-shadow:0 3px 0 -1px var(--orange)}
+.pill.abs.chg:hover{box-shadow:0 3px 0 -1px var(--orange),0 0 0 3px rgba(10,102,194,.22)}
+
+.fold{position:relative;font-size:11px;color:var(--faint);padding:3px 6px;border-radius:5px;
   border:1px dashed var(--line);cursor:pointer;white-space:nowrap}
 .fold:hover{color:var(--mute);border-color:var(--mute)}
 
-/* 拉桿卡在縫隙上,不是三角形指著 pill —— 綠紅在語意上都是切點,邊界在縫隙不在節點 */
-.hd{width:7px;height:26px;border-radius:3px;flex:0 0 auto;cursor:ew-resize;position:relative}
-.hd.green{background:var(--green)}
-.hd.red{background:var(--red)}
-.hd.ghost{width:2px;height:22px;cursor:default;opacity:.45;
-  background:repeating-linear-gradient(to bottom,currentColor 0 3px,transparent 3px 6px)}
-.hd.ghost.green{color:var(--green);background-color:transparent}
-.hd.ghost.red{color:var(--red);background-color:transparent}
-.hd:not(.ghost):hover{box-shadow:0 0 0 3px rgba(0,0,0,.10)}
+/* ▼ = 現在(可拖);▽ = 原始位置。標記指著「哪一顆 pill」而不是縫隙 ——
+   縫隙上的直立拉桿會讓人分不清它屬於左邊還是右邊那一層。
+   紅綠都只能往左離開原始位置,所以 ▽ 永遠在 ▼ 的右邊。 */
+.mk{position:absolute;left:50%;transform:translateX(-50%);top:-13px;
+  font-size:11px;line-height:1;pointer-events:none;user-select:none}
+.mk.g{color:var(--green)}
+.mk.r{color:var(--red)}
+.mk.ghost{opacity:.5}
+.mk.cur{pointer-events:auto;cursor:ew-resize}
+.mk.cur:hover,.mk.grab{text-shadow:0 0 6px currentColor}
 
 /* 分岔:同一列局部裂成兩線再合回來(捷運路線圖),不需要符號或圖例 */
 .fork{display:inline-flex;flex-direction:column;gap:3px;
@@ -273,6 +287,7 @@ button.gp:disabled{opacity:.45;cursor:default}
     <span id="gp-phase"></span>
     <span class="sp"></span>
     <button class="gp" id="btn-add">加範例</button>
+    <button class="gp" id="btn-abstract">抽象</button>
     <button class="gp" id="btn-txtmode">文字</button>
     <button class="gp" id="btn-clear">清除</button>
     <button class="gp" id="btn-min">－</button>
@@ -333,7 +348,8 @@ let examples = [];                       /* {origin, enabled} */
 let redUp = 0, greenUp = 0;
 let overrides = new Map();               /* node.key → 'idx' | 'bare' */
 let openRuns = new Set();                /* 'L' | 'R' — 手動展開的摺疊段 */
-let expandAll = false;                   /* 拖曳中:全展開 */
+let abstract = true;                     /* 抽象化:不顯示標記名與序號字面 */
+const KEEP = 3;                          /* 邊界外最多顯示幾層 → 一次拖曳最多移動 3 格 */
 let G = null, matched = [], preview = null;
 let hoverEl = null, dragging = null, pendingDestructive = null;
 
@@ -505,11 +521,6 @@ function analyze(geom) {
 }
 
 /* ═════════ 試算 ═════════ */
-function matchesIfNode(n, state) {
-  const s = n.state; n.state = state;
-  const r = runOf(G);
-  n.state = s; return r;
-}
 function matchesIfBound(gUp, rUp) {
   const m = computeGeom(gUp, rUp);
   return m ? runOf(m) : [];
@@ -550,10 +561,9 @@ function rebuildBoxes() {
     const kind = !pv ? 'blue' : (pv.has(el) ? (cur.has(el) ? 'blue' : 'blue-add') : 'blue-drop');
     boxes.push({ el, kind, pad: 1 });
   }
-  if (G) examples.forEach((ex, i) => {
-    const rd = G.reds[i]; if (!rd) return;
-    boxes.push({ el: rd, kind: ex.enabled ? 'red' : 'red-off', pad: 0 });
-  });
+  /* 還沒湊滿兩個範例時也要畫 —— 點下第一個就該看得到自己選了什麼 */
+  const marks = G ? G.reds.map((rd, i) => [rd, examples[i].enabled]) : examples.map(ex => [ex.origin, true]);
+  marks.forEach(([rd, en]) => { if (rd) boxes.push({ el: rd, kind: en ? 'red' : 'red-off', pad: 0 }); });
   paintBoxes();
 }
 let raf = 0;
@@ -573,20 +583,26 @@ function toast(t) {
 }
 const el = (cls, txt) => { const d = document.createElement('span'); d.className = cls; if (txt != null) d.textContent = txt; return d; };
 
+/* 抽象化模式:整顆 pill 就是開關本身 —— 灰 = 不能按,實心 = 序號開著,空心 = 序號關著。
+   沒有開關的 pill 不給 hover 效果,也不給 hover 預覽(預覽只在拖曳時發生)。 */
+function toggleNode(n) {
+  overrides.set(n.key, n.state === 'idx' ? 'bare' : 'idx');
+  clearPreview(); rebuild();
+}
 function pillEl(n) {
-  const p = el('pill');
-  if (n.visible && n.state !== n.def) p.classList.add('chg');
-  p.appendChild(el('tag', n.tag));
+  const p = el('pill' + (abstract ? ' abs' : ''));
   if (n.visible) {
-    const ix = el('ix' + (n.state === 'idx' ? ' on' : ''), '[' + n.idxs[0] + ']');
-    ix.addEventListener('mouseenter', () => setPreview(matchesIfNode(n, n.state === 'idx' ? 'bare' : 'idx')));
-    ix.addEventListener('mouseleave', clearPreview);
-    ix.addEventListener('click', e => {
-      e.stopPropagation();
-      const next = n.state === 'idx' ? 'bare' : 'idx';
-      overrides.set(n.key, next); clearPreview(); rebuild();
-    });
-    p.appendChild(ix);
+    p.classList.add(n.state === 'idx' ? 'on' : 'off');
+    if (n.state !== n.def) p.classList.add('chg');
+  } else p.classList.add('lock');
+  if (!abstract) p.appendChild(el('tag', n.tag));
+  if (n.visible) {
+    if (abstract) p.addEventListener('click', () => toggleNode(n));
+    else {
+      const ix = el('ix' + (n.state === 'idx' ? ' on' : ''), '[' + n.idxs[0] + ']');
+      ix.addEventListener('click', e => { e.stopPropagation(); toggleNode(n); });
+      p.appendChild(ix);
+    }
   }
   if (n.r != null && G.stops.includes(n.r)) p.dataset.rstop = n.r;
   if (n.k != null) p.dataset.gstop = n.k;
@@ -594,20 +610,21 @@ function pillEl(n) {
 }
 
 function dimPill(e_, opts) {
-  const p = el('pill dim');
-  p.appendChild(el('tag', e_.tagName.toLowerCase()));
-  if (opts.gstop != null) {
-    p.dataset.gstop = opts.gstop;
-    p.addEventListener('mouseenter', () => setPreview(matchesIfBound(opts.gstop, redUp)));
-    p.addEventListener('mouseleave', clearPreview);
-  }
-  if (opts.rstop != null) {
-    p.dataset.rstop = opts.rstop;
-    p.addEventListener('mouseenter', () => setPreview(matchesIfBound(greenUp, opts.rstop)));
-    p.addEventListener('mouseleave', clearPreview);
-  }
+  const p = el('pill dim' + (abstract ? ' abs' : ''));
+  if (!abstract) p.appendChild(el('tag', e_.tagName.toLowerCase()));
+  if (opts.gstop != null) p.dataset.gstop = opts.gstop;
+  if (opts.rstop != null) p.dataset.rstop = opts.rstop;
   if (opts.green) p.classList.add('isgreen');
   return p;
+}
+
+/* ▼ = 現在(可拖);▽ = 原始位置。標記指著「哪一顆 pill」,不是指著縫隙 ——
+   縫隙上的直立拉桿會讓人分不清它屬於左邊還是右邊那一層。 */
+function mark(host, kind, cur) {
+  if (!host) return;
+  const m = el('mk ' + kind + (cur ? ' cur' : ' ghost'), cur ? '▼' : '▽');
+  if (cur) m.addEventListener('mousedown', e => startDrag(e, kind === 'g' ? 'green' : 'red'));
+  host.appendChild(m);
 }
 
 function foldChip(n, side) {
@@ -616,35 +633,28 @@ function foldChip(n, side) {
   return c;
 }
 
-function handleEl(kind) {
-  const h = el('hd ' + kind);
-  h.title = kind === 'green'
-    ? '往左:連更上層一起比對(抓更多筆)'
-    : '往左:抓更外層的整塊(每筆包更多)';
-  h.addEventListener('mousedown', e => startDrag(e, kind));
-  return h;
-}
-const ghostEl = kind => el('hd ghost ' + kind);
-
 function renderRow() {
   rowEl.replaceChildren();
   if (!G) return;
-  const open = side => expandAll || openRuns.has(side);
+  const open = side => openRuns.has(side);
 
-  /* 綠框以上:灰、可摺 */
+  /* 綠框以上:灰、可摺。最多留 KEEP 層 —— 一次拖曳最多移動 KEEP 格,
+     放開後重畫才再釋出下一批,所以拖曳期間版面完全不動。 */
   const above = G.strip.filter(s => s.k > G.gUp);
-  const keep = open('L') ? above.length : Math.min(2, above.length);
+  const keep = open('L') ? above.length : Math.min(KEEP, above.length);
   if (above.length > keep) rowEl.appendChild(foldChip(above.length - keep, 'L'));
   above.slice(above.length - keep).forEach(s => rowEl.appendChild(dimPill(s.el, { gstop: s.k })));
 
   /* 綠框自己:是求值的根,不在查詢式裏 → 灰 */
   const gEntry = G.strip.find(s => s.k === G.gUp);
-  rowEl.appendChild(dimPill(gEntry.el, { gstop: G.gUp, green: true }));
-  rowEl.appendChild(handleEl('green'));
+  const gPill = dimPill(gEntry.el, { gstop: G.gUp, green: true });
+  rowEl.appendChild(gPill);
+  mark(gPill, 'g', true);
 
   /* chain:綠框以下到 NCA。綠框的原始位置是 NCA —— 在現在位置的「右邊」,因為只能往左離開 */
-  G.chainNodes.forEach(n => rowEl.appendChild(pillEl(n)));
-  if (G.gUp !== 0) rowEl.appendChild(ghostEl('green'));
+  let ncaPill = null;
+  G.chainNodes.forEach(n => { ncaPill = pillEl(n); rowEl.appendChild(ncaPill); });
+  if (G.gUp !== 0) mark(ncaPill, 'g', false);
 
   /* 分岔:同一列局部裂成兩線再合回來 */
   if (G.fork) {
@@ -669,18 +679,22 @@ function renderRow() {
   }
 
   /* 共同結尾 */
-  G.sufNodes.forEach(n => rowEl.appendChild(pillEl(n)));
-  rowEl.appendChild(handleEl('red'));
+  let redPill = null;
+  G.sufNodes.forEach(n => { redPill = pillEl(n); rowEl.appendChild(redPill); });
+  mark(redPill, 'r', true);
 
   /* 紅框以下到原始點擊處:灰、可摺。紅框的原始位置在最右端(原始點擊處) */
   const o0 = examples[0].origin;
   const below = [];
   for (let r = G.rUp - 1; r >= 0; r--) below.push({ el: ancAt(o0, r), r });
-  const keepR = open('R') ? below.length : Math.min(2, below.length);
-  below.slice(0, keepR).forEach(s =>
-    rowEl.appendChild(dimPill(s.el, G.stops.includes(s.r) ? { rstop: s.r } : {})));
-  if (below.length > keepR) rowEl.appendChild(foldChip(below.length - keepR, 'R'));
-  if (G.rUp !== 0) rowEl.appendChild(ghostEl('red'));
+  const keepR = open('R') ? below.length : Math.min(KEEP, below.length);
+  let last = null;
+  below.slice(0, keepR).forEach(s => {
+    last = dimPill(s.el, G.stops.includes(s.r) ? { rstop: s.r } : {});
+    rowEl.appendChild(last);
+  });
+  if (below.length > keepR) { last = foldChip(below.length - keepR, 'R'); rowEl.appendChild(last); }
+  if (G.rUp !== 0) mark(last, 'r', false);   /* 摺起來時原始位置就掛在摺疊塊上 */
 }
 
 function renderCount() {
@@ -707,8 +721,6 @@ function renderList() {
     const t = getTxt(e_);
     const tx = el('lt' + (t ? '' : ' empty'), t ? clip(t, 90) : '(空)');
     row.appendChild(tx);
-    row.addEventListener('mouseenter', () => { hoverEl = e_; rebuildBoxes(); });
-    row.addEventListener('mouseleave', () => { hoverEl = null; rebuildBoxes(); });
     row.addEventListener('click', () => e_.scrollIntoView({ block:'center', behavior:'smooth' }));
     listEl.appendChild(row);
   });
@@ -724,6 +736,8 @@ function render() {
     : phase === 'select' ? '點兩個看起來同一類的東西'
     : phase === 'add' ? '點一個目前沒抓到的同類元素'
     : '拖拉桿改範圍 · 點序號改鬆緊 · 右鍵紅框可移除';
+  $('#btn-abstract').textContent = abstract ? '抽象' : '標記';
+  $('#btn-abstract').title = abstract ? '目前隱藏標記名 — 點一下顯示' : '目前顯示標記名 — 點一下隱藏';
   $('#btn-txtmode').textContent = TXTMODES[txtMode].label;
   $('#btn-txtmode').title = TXTMODES[txtMode].tip;
   const ready = !!G;
@@ -755,25 +769,26 @@ function resetAll() {
 /* ═════════ 拉桿拖曳 ═════════
    按下即全展開(摺疊只是靜態顯示優化);拖曳中 pills 版面凍結,只有拉桿位置、
    灰/不灰、藍框與命中數會動。放開才重算版面。 */
+/* 按下不重畫任何東西 —— 展開會把拖曳目標從游標底下推走。
+   落點只有畫面上已經存在的那幾顆 pill,所以一次最多走 KEEP 格。 */
 function startDrag(e, kind) {
   e.preventDefault(); e.stopPropagation();
-  expandAll = true; render();
-  const sel = kind === 'green' ? '[data-gstop]' : '[data-rstop]';
   const attr = kind === 'green' ? 'gstop' : 'rstop';
-  const stops = [...rowEl.querySelectorAll(sel)].map(p => {
+  const stops = [...rowEl.querySelectorAll('[data-' + attr + ']')].map(p => {
     const r = p.getBoundingClientRect();
-    return { v: +p.dataset[attr], x: r.right };
+    return { v: +p.dataset[attr], x: r.left + r.width / 2 };
   });
-  if (!stops.length) { expandAll = false; render(); return; }
-  const hd = rowEl.querySelector('.hd.' + kind + ':not(.ghost)');
-  const base = hd.getBoundingClientRect().left;
+  if (!stops.length) return;
+  const hd = e.currentTarget;
+  const base = hd.getBoundingClientRect().left + hd.getBoundingClientRect().width / 2;
   dragging = { kind, stops, hd, base, v: kind === 'green' ? greenUp : redUp };
+  hd.classList.add('grab');
 }
 addEventListener('mousemove', e => {
   if (!dragging) return;
   let best = dragging.stops[0];
   for (const s of dragging.stops) if (Math.abs(s.x - e.clientX) < Math.abs(best.x - e.clientX)) best = s;
-  dragging.hd.style.transform = 'translateX(' + (best.x - dragging.base) + 'px)';
+  dragging.hd.style.transform = 'translateX(calc(-50% + ' + (best.x - dragging.base) + 'px))';
   if (best.v !== dragging.v) {
     dragging.v = best.v;
     const g = dragging.kind === 'green' ? best.v : greenUp;
@@ -783,7 +798,8 @@ addEventListener('mousemove', e => {
 }, true);
 addEventListener('mouseup', () => {
   if (!dragging) return;
-  const d = dragging; dragging = null; expandAll = false;
+  const d = dragging; dragging = null;
+  d.hd.classList.remove('grab');
   if (d.kind === 'green') greenUp = d.v; else redUp = d.v;
   clearPreview(); rebuild();
 }, true);
@@ -916,6 +932,7 @@ $('#btn-add').addEventListener('click', () => {
   if (!G) return;
   phase = 'add'; pendingDestructive = null; render();
 });
+$('#btn-abstract').addEventListener('click', () => { abstract = !abstract; render(); });
 $('#btn-txtmode').addEventListener('click', () => { txtMode = (txtMode + 1) % TXTMODES.length; render(); });
 $('#btn-min').addEventListener('click', () => panel.classList.toggle('min'));
 $('#btn-copy').addEventListener('click', () => {
