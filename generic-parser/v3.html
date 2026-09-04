@@ -271,9 +271,11 @@ button.gp:disabled{opacity:.45;cursor:default}
 .fork.bare{border-color:transparent;padding:3px 1px}
 .branch{display:inline-flex;align-items:center;gap:3px}
 .branch .empty{font-size:11px;color:var(--faint);font-family:var(--mono)}
-/* 刪除而不是停用:停用會讓範例掉到 1 個,破壞「至少選兩個」的規則 */
+/* 刪除而不是停用:停用會讓樣本掉到 1 個,破壞「至少選兩個」的規則 */
 .btrash{font-size:11px;line-height:1;padding:1px 3px;border-radius:4px;cursor:pointer}
 .btrash:hover{background:rgba(10,102,194,.18)}
+.btrash.dead:hover{background: none}
+.btrash.dead{cursor: default; opacity: 0.5}
 .bplus{align-self:center;font-size:11px;line-height:1;color:var(--mute);cursor:pointer;
   border:1px solid var(--line);border-radius:4px;padding:2px 7px;margin-top:1px;background:var(--bg)}
 .bplus:hover{color:var(--blue);border-color:var(--blue);box-shadow:0 0 0 2px rgba(10,102,194,.18)}
@@ -306,7 +308,7 @@ button.gp:disabled{opacity:.45;cursor:default}
     <span class="switch"><input type="checkbox" id="tool-on"><span class="track"><span class="thumb"></span></span></span>
     <span>擷取模式</span>
   </label>
-  <label>假資料
+  <label onclick="this.children[0].showPicker()">練習
     <select id="fixture">
       <option value="clean">案例1 · 語意清楚的清單 — 練習移動祖先層級</option>
       <option value="google">案例1-2 · Google 搜尋結果(真實 HTML) — 練習移動祖先層級</option>
@@ -333,42 +335,42 @@ button.gp:disabled{opacity:.45;cursor:default}
 <main id="fx"></main>
 
 <template id="gd-anc">
-<p>這個案例可以體驗兩大功能:一是<b>移動共同祖先層級</b>(畫面上的<span class="kw g">綠框</span>),二是<b>調整節點寬鬆程度</b>(面板上排的<span class="kw b">藍色方塊</span>)。</p>
-<p>當你用紅框取樣同一側的兩個項目(例如左一、左二),面板下排就會出現代表共同祖先的<span class="kw g">綠色方塊</span>;往左按一格,祖先層級就往上調一層(爺爺 → 曾祖父)。</p>
-<p>節點寬鬆程度則是<span class="kw b">藍色方塊</span>,只要出現就能點擊切換:</p>
+<p>這個案例可以體驗兩大功能：一是<b>移動共同祖先層級</b>(畫面上的<span class="kw g">綠框</span>)，二是<b>調整節點寬鬆程度</b>(面板上排的<span class="kw b">藍色方塊</span>)。</p>
+<p>當你用紅框取樣同一側的兩個項目(例如左一、左二)，面板下排就會出現代表共同祖先的<span class="kw g">綠色方塊</span>;往左按一格，祖先層級就往上調一層(爺爺 → 曾祖父)。</p>
+<p>節點寬鬆程度則是<span class="kw b">藍色方塊</span>，只要出現就能點擊切換：</p>
 <ul>
-  <li><code>1</code> — 嚴謹配對,同層級的同一個位置只抓一筆</li>
-  <li><code>*</code> — 寬鬆配對,同層級全部都抓</li>
+  <li><code>1</code> — 嚴謹配對，同層級的同一個位置只抓一筆</li>
+  <li><code>*</code> — 寬鬆配對，同層級全部都抓</li>
 </ul>
 </template>
 
 <template id="gd-stretch">
 <p>這個案例可以體驗<b>調整紅框層級</b>。</p>
-<p>紅框取樣完之後,假如面板下方的預覽列整排都呈現為空,有很高的機率是取樣在錯誤的層級 —— 資料存在於父層,但畫面上卻選不到父層。</p>
-<p>這個問題可以透過移動樣本層級解決:找到下排代表樣本的<span class="kw r">紅色方塊</span>,往左按一格即可調高樣本層級。</p>
+<p>紅框取樣完之後，假如面板下方的預覽列整排都呈現為空，有很高的機率是取樣在錯誤的層級 —— 資料存在於父層，但畫面上卻選不到父層。</p>
+<p>這個問題可以透過移動樣本層級解決：找到下排代表樣本的<span class="kw r">紅色方塊</span>，往左按一格即可調高樣本層級。</p>
 </template>
 
 <template id="gd-deco">
 <p>這個案例可以體驗<b>分歧點</b>。</p>
-<p>當紅框取樣的兩個元素具備相同的末端結構,起點卻有不一樣的輪廓,這時工具會自動產生分歧點,將兩個查詢式的結果取聯集。</p>
-<p class="ps">p.s. 本案例有用左側橘線表現兩者的結構差異,但分歧點也有可能出現在兩個視覺一致的樣本上。</p>
+<p>當紅框取樣的兩個元素具備相同的末端結構，起點卻有不一樣的輪廓，這時工具會自動產生分歧點，將兩個查詢式的結果取聯集。</p>
+<p class="ps">p.s. 本案例有用左側橘線表現兩者的結構差異，但分歧點也有可能出現在兩個視覺一致的樣本上。</p>
 </template>
 
 <template id="gd-union">
-<p>這個案例可以體驗<b>分歧點</b>,以及<b>新增多個樣本</b>。</p>
-<p>因為分歧點的運作原理是直接取聯集,只要使用者願意,可以按加號新增數個輪廓的樣本。</p>
-<p>當樣本數超過兩個後,也可以透過垃圾桶圖示刪除不要的樣本。</p>
+<p>這個案例可以體驗<b>分歧點</b>，以及<b>新增多個樣本</b>。</p>
+<p>因為分歧點的運作原理是直接取聯集，只要使用者願意，可以按加號新增數個輪廓的樣本。</p>
+<p>當樣本數超過兩個後，也可以透過垃圾桶圖示刪除不要的樣本。</p>
 </template>
 
 <template id="gd-card">
-<p>這個案例可以體驗 <b>2D 擷取</b>功能。工具預設是擷取一維資料,倘若樣本圈選在複雜結構,使用者可以透過「2D 擷取」展開額外面板,做更細緻的分欄處理。</p>
-<p>工具會將樣本中的文字拆成三大類,並透過核取方塊,讓使用者決定要擷取哪些資料;勾選後可以在面板下方查看分欄情況:</p>
+<p>這個案例可以體驗 <b>2D 擷取</b>功能。工具預設是擷取一維資料，倘若樣本圈選在複雜結構，使用者可以透過「2D 擷取」展開額外面板，做更細緻的分欄處理。</p>
+<p>工具會將樣本中的文字拆成三大類，並透過核取方塊，讓使用者決定要擷取哪些資料;勾選後可以在面板下方查看分欄情況：</p>
 <ol>
   <li>看得見的簡單欄位</li>
   <li>看得見的複雜文字</li>
   <li>看不到的文字</li>
 </ol>
-<p>其中第二類「複雜文字」存在額外標記(例如 <code>這題重要&lt;em&gt;畫起來&lt;/em&gt;,考試會考</code>),工具提供使用者做進階的分欄處理:可以自行決定這段文字應該用空白分隔成一欄,或是拆到三個獨立欄位。</p>
+<p>其中第二類「複雜文字」存在額外標記(例如 <code>這題重要&lt;em&gt;畫起來&lt;/em&gt;，考試會考</code>)，工具提供使用者做進階的分欄處理：可以自行決定這段文字應該用空白分隔成一欄，或是拆到三個獨立欄位。</p>
 </template>
 
 <template id="fx-clean">
@@ -897,13 +899,13 @@ function renderRow() {
   G.chainNodes.forEach(n => cells.push([pillEl(n), stopBtn('g', n.k)]));
 
   /* 分歧槽:即使目前沒有分岔也存在。plus 必須永遠在 ——
-     「漏抓就再點一個範例」正是要在沒有分岔時把第一條岔路生出來。 */
+     「漏抓就再點一個樣本」正是要在沒有分岔時把第一條岔路生出來。 */
   const fk = el('fork' + (G.fork ? '' : ' bare'));
   if (G.fork) G.branches.forEach((b, bi) => {
     const br = el('branch');
     const dead = examples.length - b.exs.length < 2;
     const tr = el('btrash' + (dead ? ' dead' : ''), '🗑');
-    tr.title = dead ? '至少要留兩個範例' : '刪掉這條走法(連同它的範例)';
+    tr.title = dead ? '至少要留兩個樣本' : '刪掉這條走法(連同它的樣本)';
     if (!dead) {
       tr.addEventListener('mouseenter', () => { if (armed()) { const r = matchesWithout(bi); if (r) setPreview(r); } });
       tr.addEventListener('mouseleave', clearPreview);
@@ -1015,7 +1017,7 @@ function stateMsg() {
 function render() {
   $('#gp-phase').textContent =
     phase === 'select' ? '框選中 ' + examples.length + '/2'
-    : phase === 'add' ? '點一個要加入的範例'
+    : phase === 'add' ? '點一個要加入的樣本'
     : phase === 'tune' ? '調校中' : '';
   $('#phase-hint').textContent = !on ? '關閉中'
     : phase === 'select' ? '點兩個看起來同一類的東西'
@@ -1083,8 +1085,8 @@ function onMove(e) {
     if (probe) setPreview(probe.matched); else clearPreview();
   }
 }
-/* 加範例要不要二次確認。
-   不能用「共同結尾有沒有縮短」當判準 —— 還沒有分岔時,任何不同形狀的新範例都必然
+/* 加樣本要不要二次確認。
+   不能用「共同結尾有沒有縮短」當判準 —— 還沒有分岔時,任何不同形狀的新樣本都必然
    讓共同結尾縮短,而那正是 union 的主要復原路徑。每次都跳確認等於把警告稀釋掉。
    真正該擋的是「會毀掉東西」:紅框被迫移位,或使用者調過的某顆開關將不復存在。 */
 function tryAdd(t) {
@@ -1118,11 +1120,11 @@ function onClick(e) {
   e.preventDefault(); e.stopPropagation();
   const t = hoverEl; if (!t) return;
   if (examples.some(x => x.origin === t || x.origin.contains(t) || t.contains(x.origin))) {
-    toast('與現有範例巢狀,請點平行的元素'); return;
+    toast('與現有樣本重疊,請點平行的元素'); return;
   }
   if (phase === 'add') {
     const probe = tryAdd(t);
-    if (!probe) { toast('這個元素無法跟現有範例組成查詢式'); return; }
+    if (!probe) { toast('這個元素無法跟現有樣本組成查詢式'); return; }
     if (probe.destructive && pendingDestructive !== t) {
       pendingDestructive = t;
       toast('會縮短查詢式、部分調校失效 — 再點一次確認');
