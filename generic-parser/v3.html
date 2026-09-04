@@ -147,8 +147,8 @@ table.pv td{border:1px solid var(--line);padding:2px 6px;font-family:var(--mono)
 #gp-overlay{position:fixed;inset:0;pointer-events:none;z-index:2147483000}
 #gp-overlay .bx{position:fixed;pointer-events:none}
 .bx.hover{border:2px dashed var(--orange);background:rgba(232,89,12,.07)}
-.bx.green{border:2px solid var(--green)}
-.bx.blue{border:2px solid var(--blue)}
+.bx.green{outline:3px solid var(--green);outline-offset:2px}
+.bx.blue{border:3px solid var(--blue)}
 /* 畫布只畫一個狀態:有預覽時藍框就是預覽後的集合,實線直接搬過去。
    虛線增刪那套視覺語言認知負荷太高,不做預設。 */
 .bx.red{background:rgba(200,16,46,.12)}
@@ -162,7 +162,7 @@ table.pv td{border:1px solid var(--line);padding:2px 6px;font-family:var(--mono)
   border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.22);font-size:13px;
   flex-direction:column;overflow:hidden}
 #gp-panel.on{display:flex}
-#gp-panel .head{display:flex;gap:10px;align-items:center;padding:7px 12px;cursor:move;
+#gp-panel .head{display:flex;gap:10px;align-items:center;padding:7px 12px;cursor:all-scroll;
   background:var(--panel);border-bottom:1px solid var(--line);user-select:none}
 #gp-panel .head .sp{flex:1}
 #gp-panel .body{flex:1 1 auto;overflow:auto;padding:0}
@@ -238,10 +238,10 @@ button.gp:disabled{opacity:.45;cursor:default}
 /* ---------- 預覽列表 = 差異檢視器 ----------
    消失的列位置保留不重排,否則整份列表會跳動、眼睛得重找位置。 */
 #gp-list{padding:6px 12px 10px}
-.lrow{display:flex;gap:7px;align-items:baseline;padding:2px 4px;border-radius:4px}
-.lrow .aim{font-size:11px;color:var(--faint);cursor:pointer;flex:0 0 auto;line-height:1.4}
+.lrow{display:flex;gap:7px;align-items:baseline;padding:2px 4px}
+.lrow .aim{font-size:11px;color:var(--faint);cursor:pointer;width:1rem;text-align:center;line-height:1.4}
 .lrow .aim:hover{color:var(--blue)}
-.lrow .li{font-family:var(--mono);font-size:11px;color:var(--faint);width:1.6em;text-align:right;flex:0 0 auto}
+.lrow .li{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;flex:0 0 auto}
 .lrow .lt{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lrow .lt.empty{color:var(--red);font-style:italic}
 .lrow.ex{background:rgba(200,16,46,.07)}
