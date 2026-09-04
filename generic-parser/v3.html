@@ -147,8 +147,8 @@ table.pv td{border:1px solid var(--line);padding:2px 6px;font-family:var(--mono)
 #gp-overlay{position:fixed;inset:0;pointer-events:none;z-index:2147483000}
 #gp-overlay .bx{position:fixed;pointer-events:none}
 .bx.hover{border:2px dashed var(--orange);background:rgba(232,89,12,.07)}
-.bx.green{outline:3px solid var(--green);outline-offset:2px}
-.bx.blue{border:3px solid var(--blue)}
+.bx.green{outline:3px solid var(--green);outline-offset:3px;border-radius:3px}
+.bx.blue{border:2px solid var(--blue)}
 /* 畫布只畫一個狀態:有預覽時藍框就是預覽後的集合,實線直接搬過去。
    虛線增刪那套視覺語言認知負荷太高,不做預設。 */
 .bx.red{background:rgba(200,16,46,.12)}
@@ -195,27 +195,27 @@ button.gp:disabled{opacity:.45;cursor:default}
 .pill{display:inline-flex;align-items:center;justify-content:center;gap:3px;
   font-family:var(--mono);font-size:12px;height:24px;padding:0 6px;border-radius:5px;
   background:#dde2e8;color:var(--mute)}
-.pill.on{background:transparent;color:var(--fg);padding:0 2px}
+.pill.on{padding:0 2px}
 .pill .tag{pointer-events:none}
 /* 序號片:實心藍且有數字 = 套用 predicate;實心藍留空 = 沒有 predicate。
    寬度兩態相同 —— 切換 predicate 不該讓整列重排。 */
 .pill .ix{display:inline-flex;align-items:center;justify-content:center;
   min-width:18px;height:18px;padding:0 3px;border-radius:4px;cursor:pointer;
   background:var(--blue);color:#fff;font-size:11px}
-.pill .ix:hover{box-shadow:0 0 0 3px rgba(10,102,194,.22)}
+.pill .ix:hover{box-shadow:0 0 0 2px rgba(10,102,194,.22)}
 /* 抽象:整顆 pill 就是那個方塊。1 = 配對一筆,* = 配對多筆,同一個語意軸。 */
 .pill.abs{min-width:24px;padding:0 4px}
 .pill.abs.on{background:var(--blue);color:#fff;cursor:pointer}
-.pill.abs.on:hover{box-shadow:0 0 0 3px rgba(10,102,194,.22)}
+.pill.abs.on:hover{box-shadow:0 0 0 2px rgba(10,102,194,.22)}
 
 /* ── 下軌:高度是上軌的一半 ──
    實心 = 框現在在這裏(不可點);空心 = 點一下把框搬過來。
    綠邊／紅邊空心 = 那個框的原始位置。灰邊不區分綠紅 —— §2 保證兩者可動範圍
    不重疊且首尾相接,位置本身就是答案,再上色是重複編碼。 */
-.sb{height:12px;border-radius:3px;border:2px solid #c3cad2;background:var(--bg);cursor:pointer}
-.sb:hover{border-color:var(--blue);box-shadow:0 0 0 3px rgba(10,102,194,.18)}
+.sb{height:12px;border-radius:3px;border:1px solid #c3cad2;background:var(--bg);cursor:pointer}
 .sb.ghome{border-color:var(--green)}
 .sb.rhome{border-color:var(--red)}
+.sb:hover{border-color:var(--blue);box-shadow:0 0 0 2px rgba(10,102,194,.18)}
 .sb.cur{cursor:default;pointer-events:none}
 .sb.cur.g{background:var(--green);border-color:var(--green)}
 .sb.cur.r{background:var(--red);border-color:var(--red)}
@@ -232,13 +232,11 @@ button.gp:disabled{opacity:.45;cursor:default}
 .branch{display:inline-flex;align-items:center;gap:3px}
 .branch .empty{font-size:11px;color:var(--faint);font-family:var(--mono)}
 /* 刪除而不是停用:停用會讓範例掉到 1 個,破壞「至少選兩個」的規則 */
-.btrash{font-size:11px;line-height:1;padding:1px 3px;border-radius:4px;cursor:pointer;
-  opacity:.5;filter:grayscale(1)}
-.btrash:hover{opacity:1;filter:none;background:rgba(200,16,46,.12)}
-.btrash.dead{opacity:.18;cursor:default}
+.btrash{font-size:11px;line-height:1;padding:1px 3px;border-radius:4px;cursor:pointer}
+.btrash:hover{background:rgba(10,102,194,.18)}
 .bplus{align-self:center;font-size:11px;line-height:1;color:var(--mute);cursor:pointer;
   border:1px solid var(--line);border-radius:4px;padding:2px 7px;margin-top:1px;background:var(--bg)}
-.bplus:hover{color:var(--blue);border-color:var(--blue)}
+.bplus:hover{color:var(--blue);border-color:var(--blue);box-shadow:0 0 0 2px rgba(10,102,194,.18)}
 .bplus.armed{color:#fff;background:var(--blue);border-color:var(--blue)}
 
 /* ---------- 預覽列表 = 差異檢視器 ----------
@@ -246,7 +244,7 @@ button.gp:disabled{opacity:.45;cursor:default}
 #gp-list{padding:6px 12px 10px}
 .lrow{display:flex;gap:7px;align-items:baseline;padding:2px 4px}
 .lrow .aim{font-size:11px;color:var(--faint);cursor:pointer;width:1rem;text-align:center;line-height:1.4}
-.lrow .aim:hover{color:var(--blue)}
+.lrow .aim:hover{color:var(--blue);box-shadow:0 0 0 2px rgba(10,102,194,.18)}
 .lrow .li{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right;flex:0 0 auto}
 .lrow .lt{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lrow .lt.empty{color:var(--red);font-style:italic}
@@ -752,7 +750,7 @@ function pillEl(n) {
     /* 標記講字面查詢式:方塊裏就是實際序號,畫面逐字即 predicate。
        移除後方塊留空但同寬 —— 切換不該讓整列重排。 */
     p.appendChild(el('tag', n.tag));
-    hit = el('ix', n.state === 'idx' ? String(n.idxs[0]) : '');
+    hit = el('ix', n.state === 'idx' ? `${n.idxs[0]}` : '');
     p.appendChild(hit);
   }
   hit.addEventListener('mouseenter', () => {
