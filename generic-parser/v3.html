@@ -151,7 +151,12 @@ table.pv td{border:1px solid var(--line);padding:2px 6px;font-family:var(--mono)
 .bx.blue{border:2px solid var(--blue)}
 /* 畫布只畫一個狀態:有預覽時藍框就是預覽後的集合,實線直接搬過去。
    虛線增刪那套視覺語言認知負荷太高,不做預設。 */
-.bx.red{background:rgba(200,16,46,.12)}
+/* 紅框 overlay 自己就是移除按鈕:唯一能穩定控制游標的方式 —— 把 cursor 設在頁面
+   元素上會被它自己的樣式蓋過(紅框多半是 <a>,a{cursor:pointer} 直接贏)。
+   順帶補掉一個洞:swallow 與 onClick 都只在 picking() 時作用,所以調校階段左鍵
+   點在紅框上,若那是連結會直接導航離開。overlay 吃掉點擊之後就不會了。 */
+/* 選擇器要吃得贏 `#gp-overlay .bx` 的 pointer-events:none —— 那條是 (1,1,0) */
+#gp-overlay .bx.red{background:rgba(200,16,46,.12);pointer-events:auto;cursor:not-allowed}
 #gp-tip{position:fixed;z-index:2147483100;pointer-events:none;display:none;
   font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:4px;
   background:#1c2430;color:#fff;white-space:nowrap;max-width:60vw;overflow:hidden;text-overflow:ellipsis}
@@ -272,12 +277,12 @@ button.gp:disabled{opacity:.45;cursor:default}
   </label>
   <label>假資料
     <select id="fixture">
-      <option value="clean">乾淨 fixture(語意標籤)</option>
-      <option value="google">google 搜尋結果(真實)</option>
-      <option value="stretch">案例二 · 鋪滿整列的連結</option>
-      <option value="deco">案例一 · 裝飾層</option>
-      <option value="union">案例三 · 三種巢狀形狀(多重 union)</option>
-      <option value="card">案例四 · 影片卡片(三類欄位測試)</option>
+      <option value="clean">案例1 · 乾淨 fixture(語意標籤) 可測試綠框向上</option>
+      <option value="google">案例1-2 · google 搜尋結果(真實) 可測試綠框向上</option>
+      <option value="deco">案例2 · 裝飾層 測試分歧點</option>
+      <option value="stretch">案例3 · 鋪滿整列的連結 測試紅框向上</option>
+      <option value="union">案例4 · 三種巢狀形狀(多重 union) 測試多次取樣</option>
+      <option value="card">案例5 · 影片卡片(三類欄位測試) 測試2D擷取</option>
     </select>
   </label>
   <span class="sp"></span>
@@ -411,7 +416,6 @@ button.gp:disabled{opacity:.45;cursor:default}
     <span id="gp-phase"></span>
     <span class="sp"></span>
     <button class="gp" id="btn-abstract">抽象</button>
-    <button class="gp" id="btn-clear">清除</button>
     <button class="gp" id="btn-min">－</button>
   </div>
   <div class="body">
@@ -513,7 +517,7 @@ let hoverEl = null, pendingDestructive = null;
 let moved = true;                        /* 游標自上次點擊後是否移動過 */
 let toastMsg = '';
 
-const LIST_N = 12;
+const LIST_N = 20;
 
 /* ═════════ 幾何 ═════════ */
 function validStops(origins) {
@@ -697,6 +701,7 @@ function paintBoxes() {
     const p = b.pad || 0;
     const d = document.createElement('div');
     d.className = 'bx ' + b.kind;
+    if (b.ex != null) d.dataset.gpex = b.ex;
     d.style.left = (r.left - p) + 'px'; d.style.top = (r.top - p) + 'px';
     d.style.width = Math.max(0, r.width + p * 2) + 'px';
     d.style.height = Math.max(0, r.height + p * 2) + 'px';
@@ -713,7 +718,7 @@ function rebuildBoxes() {
   if (G && G.green) boxes.push({ el: G.green, kind: 'green', pad: 3 });
   for (const el of (preview || matched)) boxes.push({ el, kind: 'blue', pad: 1 });
   const reds = G ? G.reds : examples.map(x => x.origin);
-  reds.forEach(rd => { if (rd) boxes.push({ el: rd, kind: 'red', pad: 0 }); });
+  reds.forEach((rd, i) => { if (rd) boxes.push({ el: rd, kind: 'red', pad: 0, ex: i }); });
   paintBoxes();
 }
 let raf = 0;
@@ -913,9 +918,9 @@ function renderList() {
 /* 幾何失敗與定址失敗都必須出聲 —— §13 的「命中 0 不可能」只涵蓋查詢式求值 */
 function stateMsg() {
   if (!on || examples.length < 2) return '';
-  if (!G) return '這些元素在任何一層都對不齊,無法建立查詢式 — 右鍵紅框可移除重選';
+  if (!G) return '這些元素在任何一層都對不齊,無法建立查詢式 — 點紅框可移除重選';
   if (matched.length < examples.length)
-    return '有元素無法用 XPath 定址(多半是 SVG 內部) — 右鍵紅框可移除重選';
+    return '有元素無法用 XPath 定址(多半是 SVG 內部) — 點紅框可移除重選';
   return '';
 }
 
@@ -927,7 +932,7 @@ function render() {
   $('#phase-hint').textContent = !on ? '關閉中'
     : phase === 'select' ? '點兩個看起來同一類的東西'
     : phase === 'add' ? '點一個目前沒抓到的同類元素'
-    : '下排方塊改範圍 · 上排方塊改鬆緊 · 右鍵紅框可移除';
+    : '下排方塊改範圍 · 上排方塊改鬆緊 · 點紅框可移除';
   $('#btn-abstract').textContent = abstract ? '抽象' : '標記';
   $('#btn-abstract').title = abstract ? '目前隱藏標記名 — 點一下顯示' : '目前顯示標記名 — 點一下隱藏';
   $('#btn-txtmode').textContent = TXTMODES[txtMode].label;
@@ -1002,9 +1007,26 @@ function tryAdd(t) {
   const lost = [...overrides.keys()].some(k => G.nodes.some(n => n.key === k) && !keys.has(k));
   return { matched: runOf(m), destructive: m.rUp !== G.rUp || lost };
 }
+/* 移除紅框不依賴 G —— 配對失敗(G === null)正是最需要移除紅框的時候,
+   而 overlay 是照 examples 畫的,不經過 G。 */
+function removeExample(ix) {
+  if (!(ix >= 0 && ix < examples.length)) return;
+  examples.splice(ix, 1);
+  if (examples.length < 2) { phase = 'select'; overrides.clear(); redUp = 0; greenUp = 0; }
+  moved = false; clearPreview(); rebuild();
+}
 function onClick(e) {
   if (dlg.open) return;
-  if (!on || !picking() || UI(e.target)) return;
+  if (!on) return;
+  /* 紅框 overlay 是 pointer-events:auto,自己就是點擊目標。必須在 UI() 之前特判 ——
+     它住在 #gp-overlay 裏,UI() 會把它當成工具自己的介面而放行給頁面。 */
+  const t0 = e.target;
+  if (t0 && t0.dataset && t0.dataset.gpex !== undefined) {
+    e.preventDefault(); e.stopPropagation();
+    removeExample(+t0.dataset.gpex);
+    return;
+  }
+  if (!picking() || UI(e.target)) return;
   e.preventDefault(); e.stopPropagation();
   const t = hoverEl; if (!t) return;
   if (examples.some(x => x.origin === t || x.origin.contains(t) || t.contains(x.origin))) {
@@ -1027,23 +1049,9 @@ function onClick(e) {
   if (examples.length === 2) { phase = 'tune'; hoverEl = null; tipEl.style.display = 'none'; }
   rebuild();
 }
-/* 不依賴 G —— 配對失敗(G === null)正是最需要移除紅框的時候 */
-function onCtx(e) {
-  if (dlg.open) return;
-  if (!on || UI(e.target)) return;
-  const t = document.elementFromPoint(e.clientX, e.clientY);
-  const reds = G ? G.reds : examples.map(x => x.origin);
-  const ix = reds.findIndex(r => r && (r === t || r.contains(t)));
-  if (ix < 0) return;
-  e.preventDefault(); e.stopPropagation();
-  examples.splice(ix, 1);
-  if (examples.length < 2) { phase = 'select'; overrides.clear(); redUp = 0; greenUp = 0; }
-  clearPreview(); rebuild();
-}
 const swallow = e => { if (!dlg.open && on && picking() && !UI(e.target)) { e.preventDefault(); e.stopPropagation(); } };
 addEventListener('mousemove', onMove, true);
 addEventListener('click', onClick, true);
-addEventListener('contextmenu', onCtx, true);
 addEventListener('mousedown', swallow, true);
 addEventListener('mouseup', swallow, true);
 /* 掛在 window capture 階段,會早於 dialog 的 cancel 事件 —— 不擋就會直接把整個工具
@@ -1376,7 +1384,6 @@ $('#fixture').addEventListener('change', e => loadFixture(e.target.value));
 $('#tool-on').addEventListener('change', e => {
   on = e.target.checked; panel.classList.toggle('on', on); resetAll();
 });
-$('#btn-clear').addEventListener('click', resetAll);
 $('#btn-abstract').addEventListener('click', () => { abstract = !abstract; render(); });
 $('#btn-txtmode').addEventListener('click', () => { txtMode = (txtMode + 1) % TXTMODES.length; render(); });
 $('#btn-min').addEventListener('click', () => panel.classList.toggle('min'));
