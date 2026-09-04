@@ -115,7 +115,11 @@ a.stretch{position:absolute;inset:0;display:block}
 .samp{font:inherit;font-size:12px;line-height:1;padding:4px 8px;border:1px solid var(--line);
   border-radius:5px;background:var(--btn);color:var(--fg);cursor:pointer}
 .samp.on{background:var(--red);border-color:var(--red);color:#fff}
-.sect{display:block;font-size:11px;color:var(--faint);margin:11px 0 3px;letter-spacing:.06em}
+.sect{display:flex;gap:5px;align-items:center;font-size:11px;color:var(--faint);
+  margin:11px 0 3px;letter-spacing:.06em}
+.secfold{font-family:var(--mono);font-size:13px;line-height:1;cursor:pointer;user-select:none;
+  width:1em;text-align:center}
+.secfold:hover{color:var(--blue)}
 .sect.first{margin-top:0}
 .dnote{display:block;font-size:11px;color:var(--faint);margin:0 0 7px}
 .dnote.hid{cursor:pointer;user-select:none}
@@ -124,13 +128,17 @@ a.stretch{position:absolute;inset:0;display:block}
 .frow.konst .ft{color:var(--mute);font-style:italic}
 .frow{display:flex;gap:7px;align-items:center;padding:2px 3px;border-radius:4px;min-height:21px}
 .frow:hover{background:var(--panel)}
-.frow.dis{opacity:.34}
+/* dim 套在各部件而不是整列 —— 收合的 blob 靠 .cn 的欄號說明「我收著但有貢獻欄位」,
+   那是唯一的線索,不能跟著互斥的灰一起被壓掉。 */
+.frow.dis input,.frow.dis .ft,.frow.dis .ak,.frow.dis .star,.frow.dis .bdg{opacity:.34}
 .frow input{margin:0;flex:0 0 auto}
 .frow .ft{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .frow .ft.empty{color:var(--faint);font-style:italic}
 .frow .ak{font-family:var(--mono);font-size:11px;color:var(--faint);flex:0 0 auto}
 .frow .star{font-family:var(--mono);color:var(--faint);flex:0 0 auto}
-.frow .cn{font-size:11px;color:var(--blue);flex:0 0 auto;width:1.3em;text-align:right}
+.frow .star.fold{cursor:pointer;user-select:none;width:1em;text-align:center;font-size:13px}
+.frow .star.fold:hover{color:var(--blue)}
+.frow .cn{font-size:11px;color:var(--blue);flex:0 0 auto;min-width:1.3em;text-align:right}
 .bdg{font-family:var(--mono);font-size:11px;flex:0 0 auto;color:var(--green);width:4.6em;text-align:right}
 .bdg.part{color:#b07d09}
 .bdg.multi{color:var(--orange)}
@@ -1105,8 +1113,10 @@ const dlg = $('#gp-dlg');
 const ATTRS = ['href', 'src', 'title', 'datetime'];
 const COV_N = 50, PV_N = 10;
 const CIRC = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮'.split('');
+const num = i => i == null ? '' : (CIRC[i] || '(' + (i + 1) + ')');
 
 let can2d = false, fxTree = null, dlgSample = -1, lastPicked = null, showConst = false;
+const folded = new Set();          /* 已收合的 blob key,預設全收 */
 const checked = new Set(), cuts = new Set();
 
 /* trim() 只剝 WhiteSpace ∪ LineTerminator,不含 Cf 類零寬字元;而 PUA 圖示既非空白
@@ -1268,9 +1278,21 @@ function rowEl2(r, colNo, dis, cut) {
   cb.addEventListener('change', () => toggle2d(r));
   d.appendChild(cb);
   if (r.attr) d.appendChild(el('ak', r.attr));
-  if (r.cat === 2 && !r.leaf) d.appendChild(el('star', '*'));
+  /* 原本 * 只是個裝飾標記,換成這一區的收合鈕 —— 位置本來就對,而三角形同時
+     告訴你「這是一群」跟「現在收著還是開著」,比 * 多說一件事。 */
+  if (r.cat === 2 && !r.leaf) {
+    const f = folded.has(r.key);
+    const tw = el('star fold', f ? '›' : '⌄');
+    tw.title = f ? '展開這一區' : '收合這一區';
+    tw.addEventListener('click', e => {
+      e.stopPropagation();
+      f ? folded.delete(r.key) : folded.add(r.key);
+      renderDlg();
+    });
+    d.appendChild(tw);
+  }
   d.appendChild(el('ft' + (r.text ? '' : ' empty'), r.text ? clip(r.text, 90) : '(空)'));
-  d.appendChild(el('cn', colNo == null ? '' : (CIRC[colNo] || '(' + (colNo + 1) + ')')));
+  d.appendChild(el('cn', num(colNo)));
   d.appendChild(bdgEl(r.cov));
   return d;
 }
@@ -1334,7 +1356,21 @@ function renderDlg() {
   for (const cat of [1, 2, 3]) {
     const rs = fxTree.rows.filter(r => r.cat === cat && !isHid(r));
     if (!rs.length) continue;
-    host.appendChild(el('sect' + (first ? ' first' : ''), NAMES[cat])); first = false;
+    const sec = el('sect' + (first ? ' first' : '')); first = false;
+    if (cat === 2) {
+      /* 全展開／全收合。狀態由「是不是每一區都收著」推導,不另存一個開關 —— 
+         兩個真相來源會在使用者單獨開合某一區之後對不起來。 */
+      const allF = rs.every(r => folded.has(r.key));
+      const t = el('secfold', allF ? '›' : '⌄');
+      t.title = allF ? '全部展開' : '全部收合';
+      t.addEventListener('click', () => {
+        rs.forEach(r => allF ? folded.delete(r.key) : folded.add(r.key));
+        renderDlg();
+      });
+      sec.appendChild(t);
+    }
+    sec.appendChild(el('secname', NAMES[cat]));
+    host.appendChild(sec);
     for (const r of rs) {
       if (cat !== 2) {
         const d = rowEl2(r, cn.get(r.key), false);
@@ -1342,7 +1378,15 @@ function renderDlg() {
         host.appendChild(d); continue;
       }
       const anyLeaf = r.leaves.some(l => checked.has(l.key));
-      host.appendChild(rowEl2(r, cn.get(r.key), anyLeaf));
+      const d = rowEl2(r, cn.get(r.key), anyLeaf);
+      if (folded.has(r.key)) {
+        /* 收著的時候把葉子貢獻的欄號提到這一列 —— 否則會出現「看不見卻在輸出裏」的欄。
+           .cn 用 min-width 所以多幾個號碼是壓縮 .ft,徽章那一欄仍然對齊。 */
+        const ns = r.leaves.filter(l => checked.has(l.key)).map(l => num(cn.get(l.key))).join('');
+        if (ns) d.querySelector('.cn').textContent = ns;
+        host.appendChild(d); continue;
+      }
+      host.appendChild(d);
       const rootOn = checked.has(r.key);
       r.leaves.forEach(lf => host.appendChild(rowEl2(lf, cn.get(lf.key), rootOn, cutEl(r, lf))));
     }
@@ -1376,7 +1420,8 @@ function buildTree() {
   checked.clear(); cuts.clear();
   fxTree = G ? classify(G.reds[dlgSample]) : null;
   if (!fxTree) return;
-  showConst = false;
+  showConst = false; folded.clear();
+  fxTree.rows.forEach(r => { if (r.cat === 2) folded.add(r.key); });   /* 預設全收合 */
   for (const r of fxTree.rows) {
     r.cov = covOf(r.xp, r.cat !== 2);
     if (r.cat === 2) r.leaves.forEach(l => { l.cov = covOf(l.xp); });
