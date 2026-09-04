@@ -82,6 +82,66 @@ a.stretch{position:absolute;inset:0;display:block}
   font-size:12px;color:var(--mute)}
 
 
+/* ---------- 案例四:影片卡片(三類欄位測試) ---------- */
+.cards{list-style:none;margin:0;padding:0;max-width:460px}
+.cards .vc{border:1px solid var(--line);border-radius:8px;padding:9px 12px;margin-bottom:8px}
+.cards .vt{text-decoration:none;color:var(--fg);font-weight:700;font-size:1rem}
+.cards .row{display:flex;gap:10px;color:var(--mute);font-size:12px;margin-top:3px}
+.cards .m{font-size:12px;color:var(--mute)}
+.cards .m div,.cards .m span{display:inline}
+.cards .sr{display:none}
+.cards svg{width:14px;height:14px;fill:var(--faint);vertical-align:middle}
+
+/* ---------- 2D 擷取 modal(§15) ----------
+   <dialog> 進 top layer,不吃 z-index 競賽 —— 面板靠 2147483200 硬頂,任何後插入
+   且同樣開到最大值的頁面元素都會贏過它。不能用 all:unset,那會破壞 top layer 定位。 */
+#gp-dlg{padding:0;border:1px solid var(--line);border-radius:10px;background:var(--bg);
+  color:var(--fg);font:inherit;font-size:13px;width:min(760px,92vw);max-height:80vh;
+  box-shadow:0 12px 48px rgba(0,0,0,.32)}
+#gp-dlg[open]{display:flex;flex-direction:column}
+#gp-dlg::backdrop{background:rgba(0,0,0,.34)}
+#gp-dlg .dhead{flex:0 0 auto;display:flex;gap:10px;align-items:center;padding:8px 12px;
+  background:var(--panel);border-bottom:1px solid var(--line)}
+#gp-dlg .dhead .sp{flex:1}
+#gp-dlg .dsample{flex:0 0 auto;display:flex;gap:6px;align-items:center;
+  padding:7px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--mute)}
+#gp-dlg .dtree{flex:1 1 auto;overflow:auto;padding:9px 12px;min-height:130px}
+#gp-dlg .dprev{flex:0 0 auto;max-height:30vh;overflow:auto;
+  border-top:1px solid var(--line);padding:8px 12px}
+#gp-dlg .dfoot{flex:0 0 auto;display:flex;gap:10px;align-items:center;
+  border-top:1px solid var(--line);background:var(--panel);padding:7px 12px}
+#gp-dlg .dfoot .sp{flex:1}
+#gp-dmsg{color:var(--orange);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.samp{font:inherit;font-size:12px;line-height:1;padding:4px 8px;border:1px solid var(--line);
+  border-radius:5px;background:var(--btn);color:var(--fg);cursor:pointer}
+.samp.on{background:var(--red);border-color:var(--red);color:#fff}
+.sect{display:block;font-size:11px;color:var(--faint);margin:11px 0 3px;letter-spacing:.06em}
+.sect.first{margin-top:0}
+.dnote{display:block;font-size:11px;color:var(--faint);margin:0 0 7px}
+.frow{display:flex;gap:7px;align-items:center;padding:2px 3px;border-radius:4px;min-height:21px}
+.frow:hover{background:var(--panel)}
+.frow.dis{opacity:.34}
+.frow input{margin:0;flex:0 0 auto}
+.frow .ft{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frow .ft.empty{color:var(--faint);font-style:italic}
+.frow .ak{font-family:var(--mono);font-size:11px;color:var(--faint);flex:0 0 auto}
+.frow .star{font-family:var(--mono);color:var(--faint);flex:0 0 auto}
+.frow .cn{font-size:11px;color:var(--blue);flex:0 0 auto;width:1.3em;text-align:right}
+.bdg{font-family:var(--mono);font-size:11px;flex:0 0 auto;color:var(--green);width:4.6em;text-align:right}
+.bdg.part{color:#b07d09}
+.bdg.multi{color:var(--orange)}
+/* 切點:斷點不是點縫隙 —— 葉子可以不連續勾選,縫隙會被未勾選的列擋住。
+   實線 = 從這裏開新欄;虛線 = 併入前一欄;第一片已勾選的葉子鎖死為開欄。 */
+.cut{font-family:var(--mono);font-size:13px;flex:0 0 auto;width:1em;margin-left:15px;
+  color:var(--blue);cursor:pointer;user-select:none;line-height:1}
+.cut.soft{color:var(--faint)}
+.cut.lock{cursor:default;opacity:.5}
+.cut.off{color:transparent;cursor:default}
+table.pv{border-collapse:collapse;font-size:11px}
+table.pv td{border:1px solid var(--line);padding:2px 6px;font-family:var(--mono);
+  max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pvempty{color:var(--faint);font-size:12px}
+
 /* ---------- 工具 overlay ----------
    綠 = 完全在外;藍 = 騎在邊框上;紅 = 內填色(不畫線)。三種不同編碼,不是三個同心環。 */
 #gp-overlay{position:fixed;inset:0;pointer-events:none;z-index:2147483000}
@@ -209,6 +269,7 @@ button.gp:disabled{opacity:.45;cursor:default}
       <option value="stretch">案例二 · 鋪滿整列的連結</option>
       <option value="deco">案例一 · 裝飾層</option>
       <option value="union">案例三 · 三種巢狀形狀(多重 union)</option>
+      <option value="card">案例四 · 影片卡片(三類欄位測試)</option>
     </select>
   </label>
   <span class="sp"></span>
@@ -295,6 +356,44 @@ button.gp:disabled{opacity:.45;cursor:default}
 <template id="fx-google">
 <div id="bres"><div class="ULSxyf"><div class="MjjYud"><div data-abe="" data-hveid="CC0QAA" data-ved="2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ26YDegQILRAA"><div class="oIk2Cb"><div class="M6HR1c PJI6ge adDDi"><span class="mgAbYb RES9jf YC72Wc IFnjPb JGD2rd" aria-level="2" role="heading">其他人也搜尋了以下項目</span><span class="YR2tRd"></span></div><div class="y6Uyqe"><div class="EIaa9b"><div class="AJLUJb"><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CC4QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%98%AF+%E4%BB%80%E9%BA%BC&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAguEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>是 什麼</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CEQQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%95%99%E5%AD%B8&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAhEEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>教學</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CD4QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E5%B7%A5%E5%85%B7&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg-EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>工具</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CD0QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Python+unit+test&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg9EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd"><b>Python</b> unit test</span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div></div><div class="AJLUJb"><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDwQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%80%8E%E9%BA%BC+%E5%AF%AB&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg8EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>怎麼 寫</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDgQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E7%AF%84%E4%BE%8B&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAg4EAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>範例</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CDAQAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+%E6%84%8F%E6%80%9D&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAgwEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>意思</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div><div class="b2Rnsc"><div style="position:relative" class="qR29te" data-hveid="CC8QAA"><div><a class="ngTNl ggLgoc" href="/search?sca_esv=0237a3a71ba987c6&amp;biw=1916&amp;bih=1049&amp;q=Unit+test+case&amp;sa=X&amp;ved=2ahUKEwiwpM3I7MCWAxX1lK8BHanYLKYQ1QJ6BAgvEAE"><div class="B2VR9 CJHX3e"><div class="wyccme"><div><div class="oatEtb"><span class="dg6jd JGD2rd">Unit test <b>case</b></span></div></div></div><div class="XbQ34c"><div class="DxHbyd OvQkSb eJtrMc"><span class="yiwlZe z1asCe MZy1Rb" style="height:20px;line-height:20px;width:20px"><svg focusable="false" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg></span></div></div></div></a></div></div></div></div></div></div></div></div></div></div></div>
 </template>
+<template id="fx-card">
+<section class="demo">
+  <h2>W · 影片卡片(第一/二/三類欄位測試) — 第一張卡含案例一～四的四種夾層形狀</h2>
+  <ul class="cards">
+    <li class="vc">
+      <a class="vt" href="/watch?v=lbG5hGjStJE" title="播放這部影片"><span class="ttl">單元測試 <b>是什麼</b></span></a>
+      <div class="row"><span>310K</span><div class="dur"><div>26:30</div></div></div>
+      <div class="m">from <div>15h ago</div> to now</div>
+      <div class="m">from <span><span>15h ago</span></span> to now</div>
+      <div class="m"><span>from <span>15h ago</span></span> to now</div>
+      <div class="m">from <span><span>15h ago</span>to now</span></div>
+      <div class="sr">2026-01-03T09:15:00</div>
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+    </li>
+    <li class="vc">
+      <a class="vt" href="/watch?v=aQ7bT2xKm10" title="播放這部影片"><span class="ttl">單元測試 <b>教學</b></span></a>
+      <div class="row"><span>1.2M</span><div class="dur"><div>8:04</div></div></div>
+      <div class="m">from <div>3d ago</div> to now</div>
+      <div class="sr">2025-12-31T20:02:00</div>
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+    </li>
+    <li class="vc">
+      <a class="vt" href="/watch?v=Zx9pQr4Wd22" title="播放這部影片"><span class="ttl">單元測試 <b>工具</b></span></a>
+      <div class="row"><span>88K</span><div class="dur"><div>12:41</div></div></div>
+      <div class="m">from <div>2w ago</div> to now</div>
+      <div class="sr">2025-12-18T11:40:00</div>
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+    </li>
+    <li class="vc">
+      <a class="vt" href="/watch?v=Kd3mNv8Ly51" title="播放這部影片"><span class="ttl">Python <b>單元測試</b></span></a>
+      <div class="row"><span>47K</span><div class="dur"><div>1:03:22</div></div></div>
+      <div class="m">from <div>1mo ago</div> to now</div>
+      <div class="sr">2025-12-02T08:05:00</div>
+      <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
+    </li>
+  </ul>
+</section>
+</template>
 <div id="gp-overlay"></div>
 <div id="gp-tip"></div>
 
@@ -314,12 +413,30 @@ button.gp:disabled{opacity:.45;cursor:default}
   <div class="foot">
     <button class="gp" id="btn-copy" disabled>複製查詢式</button>
     <label for="btn-txtmode">擷取模式: <button class="gp" id="btn-txtmode">文字</button></label>
-    <button class="gp" id="btn-extract" disabled>擷取</button>
+    <button class="gp" id="btn-extract" disabled>1D 擷取</button>
+    <button class="gp" id="btn-2d" disabled>2D 擷取…</button>
     <span id="gp-count"></span>
     <span class="sp"></span>
     <span id="gp-msg"></span>
   </div>
 </div>
+
+<dialog id="gp-dlg">
+  <div class="dhead">
+    <b>2D 擷取</b>
+    <span id="gp-dtitle" class="hint"></span>
+    <span class="sp"></span>
+    <button class="gp" id="btn-dclose">關閉</button>
+  </div>
+  <div class="dsample">樣本<span id="gp-dsamp" style="display:flex;gap:6px"></span></div>
+  <div class="dtree" id="gp-dtree"></div>
+  <div class="dprev" id="gp-dprev"></div>
+  <div class="dfoot">
+    <button class="gp" id="btn-2dcopy" disabled>複製</button>
+    <span id="gp-dmsg"></span>
+    <span class="sp"></span>
+  </div>
+</dialog>
 
 <script>
 (() => {
@@ -327,7 +444,7 @@ button.gp:disabled{opacity:.45;cursor:default}
 
 /* ═════════ 小工具 ═════════ */
 const $ = s => document.querySelector(s);
-const UI = el => !!(el && el.closest && el.closest('#gp-panel,#gp-overlay,#gp-tip,header.sandbox'));
+const UI = el => !!(el && el.closest && el.closest('#gp-panel,#gp-overlay,#gp-tip,#gp-dlg,header.sandbox'));
 const norm = s => String(s).replace(/\s+/g, ' ').trim();
 const clip = (s, n) => { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 const HTMLNS = 'http://www.w3.org/1999/xhtml';
@@ -605,8 +722,9 @@ const armed = () => moved;
 /* ═════════ 面板 ═════════ */
 const panel = $('#gp-panel'), rowEl = $('#gp-row'), wrapEl = $('#gp-rowwrap'), listEl = $('#gp-list');
 function toast(t) {
-  toastMsg = t; $('#gp-msg').textContent = t;
-  clearTimeout(toast._t); toast._t = setTimeout(() => { toastMsg = ''; render(); }, 3200);
+  toastMsg = t; $('#gp-msg').textContent = t; $('#gp-dmsg').textContent = t;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toastMsg = ''; $('#gp-dmsg').textContent = ''; render(); }, 3200);
 }
 const el = (cls, txt) => { const d = document.createElement('span'); d.className = cls; if (txt != null) d.textContent = txt; return d; };
 
@@ -800,6 +918,9 @@ function render() {
   $('#btn-txtmode').title = TXTMODES[txtMode].tip;
   const ready = !!G;
   $('#btn-copy').disabled = !ready; $('#btn-extract').disabled = !ready;
+  $('#btn-2d').disabled = !can2d;
+  $('#btn-2d').title = can2d ? '把一筆記錄拆成多欄'
+    : ready ? '這個紅框只抓得到一欄 — 沒有可分的欄位' : '';
   $('#gp-msg').textContent = toastMsg || stateMsg();
   renderRow(); renderCount(); renderList(); scrollQueryIntoView();
 }
@@ -810,13 +931,18 @@ function rebuild() {
   G = computeGeom(greenUp, redUp);
   if (G) { greenUp = G.gUp; redUp = G.rUp; analyze(G); matched = runOf(G); }
   else matched = [];
+  /* 啟用條件直接跑真正的分類器,不是 v2 警告的那種 proxy 預判 ——
+     算出 0 或 1 列就代表 modal 打開也真的沒東西可分。成本只有樣本紅框一顆的子樹。 */
+  can2d = false;
+  if (G) { const c = classify(G.reds[sampleIx()]); can2d = c.count >= 2; }
   if (phase === 'tune' && examples.length < 2) phase = 'select';
   rebuildBoxes(); render();
 }
 function resetAll() {
   examples = []; overrides.clear();
   redUp = 0; greenUp = 0; G = null; matched = []; preview = null;
-  hoverEl = null; dragging = null; pendingDestructive = null; toastMsg = '';
+  hoverEl = null; dragging = null; pendingDestructive = null; toastMsg = ''; lastPicked = null;
+  if (dlg.open) dlg.close();
   phase = on ? 'select' : 'idle';
   tipEl.style.display = 'none';
   rebuild();
@@ -860,6 +986,9 @@ addEventListener('mouseup', () => {
 /* ═════════ 頁面互動 ═════════ */
 const picking = () => phase === 'select' || phase === 'add';
 function onMove(e) {
+  /* ::backdrop 是虛擬元素不會被回傳,elementFromPoint 可能仍回傳底下的 inert 頁面元素,
+     橘框會繼續跟著游標跑。各家瀏覽器對 inert 與 hit test 的處理不一致。 */
+  if (dlg.open) return;
   if (!on || !picking()) return;
   const t = pickable(document.elementFromPoint(e.clientX, e.clientY));
   if (!t || UI(t) || t === document.body || t === document.documentElement) {
@@ -889,6 +1018,7 @@ function tryAdd(t) {
   return { matched: runOf(m), destructive: m.rUp !== G.rUp || lost };
 }
 function onClick(e) {
+  if (dlg.open) return;
   if (!on || !picking() || UI(e.target)) return;
   e.preventDefault(); e.stopPropagation();
   const t = hoverEl; if (!t) return;
@@ -904,16 +1034,17 @@ function onClick(e) {
       return;
     }
     pendingDestructive = null;
-    examples.push({ origin: t });
+    examples.push({ origin: t }); lastPicked = t;
     phase = 'tune'; hoverEl = null; tipEl.style.display = 'none';
     clearPreview(); rebuild(); return;
   }
-  examples.push({ origin: t });
+  examples.push({ origin: t }); lastPicked = t;
   if (examples.length === 2) { phase = 'tune'; hoverEl = null; tipEl.style.display = 'none'; }
   rebuild();
 }
 /* 不依賴 G —— 配對失敗(G === null)正是最需要移除紅框的時候 */
 function onCtx(e) {
+  if (dlg.open) return;
   if (!on || UI(e.target)) return;
   const t = document.elementFromPoint(e.clientX, e.clientY);
   const reds = G ? G.reds : examples.map(x => x.origin);
@@ -924,13 +1055,15 @@ function onCtx(e) {
   if (examples.length < 2) { phase = 'select'; overrides.clear(); redUp = 0; greenUp = 0; }
   clearPreview(); rebuild();
 }
-const swallow = e => { if (on && picking() && !UI(e.target)) { e.preventDefault(); e.stopPropagation(); } };
+const swallow = e => { if (!dlg.open && on && picking() && !UI(e.target)) { e.preventDefault(); e.stopPropagation(); } };
 addEventListener('mousemove', onMove, true);
 addEventListener('click', onClick, true);
 addEventListener('contextmenu', onCtx, true);
 addEventListener('mousedown', swallow, true);
 addEventListener('mouseup', swallow, true);
-addEventListener('keydown', e => { if (e.key === 'Escape' && on) $('#tool-on').click(); }, true);
+/* 掛在 window capture 階段,會早於 dialog 的 cancel 事件 —— 不擋就會直接把整個工具
+   off 掉。Esc 分兩層:modal 開著時第一次只關 modal,第二次才結束工具。 */
+addEventListener('keydown', e => { if (e.key === 'Escape' && on && !dlg.open) $('#tool-on').click(); }, true);
 
 /* ═════════ 輸出 ═════════ */
 function anchorExpr(target) {
@@ -963,15 +1096,292 @@ function copyText(t, okMsg) {
 function fallback(t, done) {
   const ta = document.createElement('textarea');
   ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
-  document.body.appendChild(ta); ta.select();
+  (dlg.open ? dlg : document.body).appendChild(ta); ta.select();
   let ok = false;
   try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
   ta.remove();
   ok ? done() : toast('複製失敗');
 }
 
+/* ═════════ 2D 擷取:欄位展開(§15) ═════════
+   1D 決定「抓哪些東西」,2D 決定「那一列有哪些欄」。藍框集合完全不變,一筆記錄仍然一列。 */
+const dlg = $('#gp-dlg');
+const ATTRS = ['href', 'src', 'title', 'datetime'];
+const COV_N = 50, PV_N = 10;
+const CIRC = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮'.split('');
+
+let can2d = false, fxTree = null, dlgSample = -1, lastPicked = null;
+const checked = new Set(), cuts = new Set();
+
+/* trim() 只剝 WhiteSpace ∪ LineTerminator,不含 Cf 類零寬字元;而 PUA 圖示既非空白
+   也看得見,是可能的資料(星號 = 已收藏)。看得見的留下,看不見的剪掉。 */
+const blank = v => !String(v).trim().replace(/[\u00AD\u200B-\u200F\u2060-\u2064\uFEFF]/g, '');
+/* innerText 對未 render 的元素會 fallback 成 descendant text content,
+   <div style="display:none">SECRET</div> 的 innerText 是 "SECRET" —— 偵測不到頭號目標。
+   改量 client rects。抓不到 sr-only 是刻意的:三分法下歸錯類只影響排序,不掉資料。 */
+const unseen = el => !el.getClientRects().length;
+const isHtml = n => n.nodeType === 1 && n.namespaceURI === HTMLNS;
+const kids = el => [...el.children].filter(isHtml);
+const ownTxt = el => [...el.childNodes].some(n => n.nodeType === 3 && !blank(n.data));
+const txtIdx = t => { let i = 1, x = t; while ((x = x.previousSibling)) if (x.nodeType === 3) i++; return i; };
+
+/* 序號一律取真實 DOM 位置,不能用剪枝後的排名,否則選擇式套到其他列會錯位。
+   SVG 在 XPath 1.0 裏用標籤名定址不到(命名空間不符),路徑上碰到就放棄這一列。 */
+function relXp(node, root, attr) {
+  const segs = attr ? ['@' + attr] : [];
+  let e = node;
+  if (node.nodeType === 3) { segs.unshift('text()[' + txtIdx(node) + ']'); e = node.parentElement; }
+  while (e && e !== root) {
+    if (!isHtml(e)) return null;
+    segs.unshift(e.tagName.toLowerCase() + '[' + tagIdx(e) + ']');
+    e = e.parentElement;
+  }
+  if (e !== root) return null;
+  return segs.length ? './' + segs.join('/') : '.';
+}
+
+/* 攤平:從 blob 根起 DFS,文件順序吐出「非空白 text node」與「沒有元素子節點的元素」;
+   有元素子節點的元素繼續下探,它自己的直屬文字照樣在原位吐出。永遠兩層。
+   中間層不長 * —— 同一 blob 內勾選的葉子本來就會併成一欄,它不提供任何新能力。 */
+function flatten(el, out, hid) {
+  for (const n of el.childNodes) {
+    if (n.nodeType === 3) { if (!blank(n.data)) out.push({ node: n, text: norm(n.data) }); continue; }
+    if (!isHtml(n)) continue;
+    if (unseen(n)) { if (!blank(n.textContent)) hid.push(n); continue; }
+    if (kids(n).length) flatten(n, out, hid);
+    else if (!blank(n.textContent)) out.push({ node: n, text: norm(n.innerText) });
+  }
+}
+
+/* 切分規則。不需要坍縮 —— 遞迴只在「有直屬文字」處產出一列,容器天生不出現。
+   富文字(<b>/<em> 混在文字裏)算夾層:只看結構不看標籤名,白名單會讓
+   <div>from <b>15h ago</b> to</div> 塌成一行,15h ago 就再也挑不出來。 */
+function classify(root) {
+  const c1 = [], c2 = [], c3 = [], hid = [];
+  (function walk(el) {
+    if (unseen(el)) { if (!blank(el.textContent)) hid.push(el); return; }
+    if (!ownTxt(el)) { kids(el).forEach(walk); return; }
+    if (!kids(el).some(k => !blank(k.textContent))) { c1.push(el); return; }
+    const leaves = [];
+    flatten(el, leaves, hid);
+    /* 唯一的葉子被隱藏抽走時降級成第一類 */
+    leaves.length >= 2 ? c2.push({ el, leaves }) : c1.push(el);
+  })(root);
+
+  /* 第三類 = 屬性 + 隱藏文字,一次文件順序走訪。
+     屬性在文字流裏沒有位置,塞進空白 join 只會污染;隱藏文字同理 —— innerText 不含它,
+     留在 blob 裏會讓「* 必然含蓋所有葉」這條互斥依據破掉。 */
+  const hset = new Set(hid);
+  for (const el of [root, ...root.querySelectorAll('*')]) {
+    if (!isHtml(el)) continue;
+    for (const a of ATTRS) {
+      const v = el.getAttribute(a);
+      if (v != null && !blank(v)) c3.push({ el, attr: a, text: norm(v) });
+    }
+    if (hset.has(el)) c3.push({ el, attr: null, text: norm(el.textContent) });
+  }
+
+  /* 展示順序:orderby 類別 thenby 文件順序。輸出欄序 = 畫面順序。 */
+  const rows = [];
+  for (const el of c1) {
+    const xp = relXp(el, root);
+    if (xp) rows.push({ cat: 1, xp, key: '1|' + xp, text: norm(el.innerText) });
+  }
+  for (const b of c2) {
+    const xp = relXp(b.el, root); if (!xp) continue;
+    const leaves = [];
+    for (const lf of b.leaves) {
+      const lx = relXp(lf.node, root);
+      if (lx) leaves.push({ cat: 2, leaf: true, xp: lx, key: '2L|' + lx, text: lf.text });
+    }
+    if (leaves.length < 2) continue;
+    const row = { cat: 2, xp, key: '2|' + xp, text: norm(b.el.innerText), leaves };
+    leaves.forEach(l => { l.owner = row; });
+    rows.push(row);
+  }
+  for (const o of c3) {
+    const xp = relXp(o.el, root, o.attr);
+    if (xp) rows.push({ cat: 3, xp, key: '3|' + xp, text: o.text, attr: o.attr });
+  }
+  return { rows, count: rows.reduce((a, r) => a + (r.cat === 2 ? r.leaves.length : 1), 0) };
+}
+
+/* ── 取值 ──
+   0 命中輸出空字串不跳過(TSV 每行 tab 數必須固定);N 命中以空白 join 不取第一個
+   (取第一個會靜默丟資料,join 之後那格異常地長,預覽一眼看得出不對)。 */
+const nodeVal = n => n.nodeType === 1 ? n.innerText : n.nodeType === 2 ? n.value : n.textContent;
+function cellOf(parts, rec) {
+  const out = [];
+  for (const p of parts) {
+    const v = norm((evalIn(p.xp, rec) || []).map(nodeVal).join(' '));
+    if (v) out.push(v);
+  }
+  return out.join(' ');
+}
+
+/* coverage 只跑前 50 筆。未取樣時 100 個 leaf × 1000 筆 = 十萬次 evaluate,
+   主執行緒會卡死數秒 —— 而那正是這工具最有價值的場合。擷取本身永遠跑全部。 */
+function covOf(xp) {
+  const S = matched.slice(0, COV_N);
+  let ok = 0, multi = false;
+  for (const rec of S) { const n = (evalIn(xp, rec) || []).length; if (n) { ok++; if (n > 1) multi = true; } }
+  return { ok, tot: S.length, multi };
+}
+
+const sampleIx = () => {
+  const i = examples.findIndex(x => x.origin === lastPicked);
+  return i >= 0 ? i : examples.length - 1;
+};
+
+/* 欄 = 一個列群組:第一類項、第二類 blob、第三類項。
+   切點旗標的前綴和推導欄號 —— 任何操作序列都不可能產生非法狀態,不需要驗證邏輯。 */
+function colsOf() {
+  const cols = [];
+  if (!fxTree) return cols;
+  for (const r of fxTree.rows) {
+    if (r.cat !== 2) { if (checked.has(r.key)) cols.push([r]); continue; }
+    if (checked.has(r.key)) { cols.push([r]); continue; }
+    let cur = null;
+    for (const lf of r.leaves) {
+      if (!checked.has(lf.key)) continue;
+      if (!cur || cuts.has(lf.key)) { cur = []; cols.push(cur); }
+      cur.push(lf);
+    }
+  }
+  return cols;
+}
+
+/* ── 繪製 ── */
+function bdgEl(c) {
+  return el('bdg' + (c.ok < c.tot ? ' part' : c.multi ? ' multi' : ''),
+            c.ok + '/' + c.tot + (c.multi ? '⚠' : ''));
+}
+function rowEl2(r, colNo, dis, cut) {
+  const d = el('frow' + (dis ? ' dis' : ''));
+  if (cut) d.appendChild(cut);
+  const cb = document.createElement('input');
+  cb.type = 'checkbox'; cb.checked = checked.has(r.key); cb.disabled = dis;
+  cb.addEventListener('change', () => toggle2d(r));
+  d.appendChild(cb);
+  if (r.attr) d.appendChild(el('ak', r.attr));
+  if (r.cat === 2 && !r.leaf) d.appendChild(el('star', '*'));
+  d.appendChild(el('ft' + (r.text ? '' : ' empty'), r.text ? clip(r.text, 90) : '(空)'));
+  d.appendChild(el('cn', colNo == null ? '' : (CIRC[colNo] || '(' + (colNo + 1) + ')')));
+  d.appendChild(bdgEl(r.cov));
+  return d;
+}
+function toggle2d(r) {
+  if (checked.has(r.key)) { checked.delete(r.key); cuts.delete(r.key); }
+  else {
+    checked.add(r.key);
+    /* 互斥只在單一 blob 內部:* 的 innerText 必然含蓋所有葉,並存必然重複。
+       雙向 disable 由 renderDlg 施加,葉子那一側因此不需要在這裏清理 —— 勾得動葉子
+       就代表 * 沒被勾。這裏只處理反向:勾 * 時把先前勾過的葉子連同切點一起收掉。 */
+    if (r.cat === 2 && !r.leaf) r.leaves.forEach(l => { checked.delete(l.key); cuts.delete(l.key); });
+  }
+  renderDlg();
+}
+function cutEl(r, lf) {
+  const chk = checked.has(lf.key);
+  if (!chk) return el('cut off', '┃');
+  const first = r.leaves.find(l => checked.has(l.key)) === lf;
+  if (first) { const c = el('cut lock', '┃'); c.title = '第一欄的起點,固定'; return c; }
+  const on = cuts.has(lf.key);
+  const c = el('cut' + (on ? '' : ' soft'), on ? '┃' : '┆');
+  c.title = on ? '併回前一欄' : '從這裏開新欄';
+  c.addEventListener('click', () => { on ? cuts.delete(lf.key) : cuts.add(lf.key); renderDlg(); });
+  return c;
+}
+
+function renderDlg() {
+  const host = $('#gp-dtree'); host.replaceChildren();
+  $('#gp-dtitle').textContent = '共 ' + matched.length + ' 筆';
+  const samp = $('#gp-dsamp'); samp.replaceChildren();
+  examples.forEach((_, i) => {
+    const b = document.createElement('button');
+    b.className = 'samp' + (i === dlgSample ? ' on' : '');
+    b.textContent = '紅' + (i + 1);
+    b.title = '換成這一列當樣本 — 樹會重建,勾選清空';
+    b.addEventListener('click', () => { if (i !== dlgSample) { dlgSample = i; buildTree(); renderDlg(); } });
+    samp.appendChild(b);
+  });
+  if (!fxTree) return;
+
+  if (matched.length > COV_N)
+    host.appendChild(el('dnote', '診斷以前 ' + COV_N + ' 筆取樣(共 ' + matched.length + ' 筆);擷取仍為全部'));
+
+  const cols = colsOf(), cn = new Map();
+  cols.forEach((parts, i) => parts.forEach(p => cn.set(p.key, i)));
+
+  const NAMES = { 1: '第一類', 2: '第二類', 3: '第三類' };
+  let first = true;
+  for (const cat of [1, 2, 3]) {
+    const rs = fxTree.rows.filter(r => r.cat === cat);
+    if (!rs.length) continue;
+    host.appendChild(el('sect' + (first ? ' first' : ''), NAMES[cat])); first = false;
+    for (const r of rs) {
+      if (cat !== 2) { host.appendChild(rowEl2(r, cn.get(r.key), false)); continue; }
+      const anyLeaf = r.leaves.some(l => checked.has(l.key));
+      host.appendChild(rowEl2(r, cn.get(r.key), anyLeaf));
+      const rootOn = checked.has(r.key);
+      r.leaves.forEach(lf => host.appendChild(rowEl2(lf, cn.get(lf.key), rootOn, cutEl(r, lf))));
+    }
+  }
+
+  /* 徽章說「這條路徑在幾列上成立」,預覽表說「抓到的內容對不對」—— 不可互相取代 */
+  const pv = $('#gp-dprev'); pv.replaceChildren();
+  if (!cols.length) pv.appendChild(el('pvempty', '勾選欄位以預覽'));
+  else {
+    const t = document.createElement('table'); t.className = 'pv';
+    matched.slice(0, PV_N).forEach(rec => {
+      const tr = document.createElement('tr');
+      cols.forEach(parts => {
+        const td = document.createElement('td');
+        td.textContent = cellOf(parts, rec);
+        tr.appendChild(td);
+      });
+      t.appendChild(tr);
+    });
+    pv.appendChild(t);
+    if (matched.length > PV_N) pv.appendChild(el('dnote', '⋯ 還有 ' + (matched.length - PV_N) + ' 筆'));
+  }
+  $('#btn-2dcopy').disabled = !cols.length;
+  $('#btn-2dcopy').textContent = cols.length ? '複製 ' + matched.length + ' 筆 · ' + cols.length + ' 欄' : '複製';
+}
+
+/* 樹只從一個樣本紅框長出。不做跨列聯集 —— 聯集出來的樹不對應畫面上任何一個實際元素。
+   切換樣本 = 重建 + 清空勾選,不嘗試用路徑字串把舊勾選比對回新樹:換了樣本意味著結構
+   可能完全不同,勉強對回去只會產生看似成功實則錯位的選擇。 */
+function buildTree() {
+  checked.clear(); cuts.clear();
+  fxTree = G ? classify(G.reds[dlgSample]) : null;
+  if (!fxTree) return;
+  for (const r of fxTree.rows) {
+    r.cov = covOf(r.xp);
+    if (r.cat === 2) r.leaves.forEach(l => { l.cov = covOf(l.xp); });
+  }
+}
+
+$('#btn-2d').addEventListener('click', () => {
+  if (!can2d) return;
+  dlgSample = sampleIx();
+  buildTree();
+  dlg.showModal();
+  renderDlg();
+});
+$('#btn-dclose').addEventListener('click', () => dlg.close());
+/* 欄位定義只活在 modal 開啟期間。換來的是整條失效規則消失 —— 不需要 sampleEl 身分比對、
+   不需要「樣本已變更」的提示。唯一的重建時機是 modal 內切換樣本。 */
+dlg.addEventListener('close', () => { fxTree = null; checked.clear(); cuts.clear(); });
+$('#btn-2dcopy').addEventListener('click', () => {
+  const cols = colsOf();
+  if (!cols.length) return;
+  copyText(matched.map(rec => cols.map(p => cellOf(p, rec)).join('\t')).join('\n'),
+           '已複製 ' + matched.length + ' 筆 · ' + cols.length + ' 欄');
+});
+
 /* ═════════ 沙盒 chrome ═════════ */
-const FIXTURES = ['clean','google','stretch','deco','union'];
+const FIXTURES = ['clean','google','stretch','deco','union','card'];
 function loadFixture(which) {
   const t = document.getElementById('fx-' + (FIXTURES.includes(which) ? which : 'clean'));
   $('#fx').replaceChildren(t.content.cloneNode(true));
