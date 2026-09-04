@@ -32,6 +32,25 @@ select{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:5
 
 main{padding:24px 18px 60vh;max-width:820px}
 
+/* ---------- 教學說明 ---------- */
+#guide{margin:22px 18px 0;max-width:720px;border:1px solid var(--line);
+  border-left:3px solid var(--blue);border-radius:10px;background:var(--panel);padding:11px 16px 13px}
+#guide .ghead{display:flex;gap:9px;align-items:baseline;margin-bottom:2px}
+#guide .ghead .sp{flex:1}
+#guide .ghead .gname{color:var(--mute);font-size:12.5px;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+#guide p{margin:7px 0;font-size:13.5px}
+#guide ul,#guide ol{margin:7px 0;padding-left:1.4em;font-size:13.5px}
+#guide li{margin:2px 0}
+#guide code{font-family:var(--mono);font-size:12px;background:var(--bg);
+  border:1px solid var(--line);border-radius:4px;padding:0 4px}
+#guide .ps{color:var(--mute);font-size:12.5px}
+#guide .kw{font-weight:700}
+#guide .kw.g{color:var(--green)}
+#guide .kw.b{color:var(--blue)}
+#guide .kw.r{color:var(--red)}
+#guide.min #guide-body{display:none}
+
 /* ---------- 乾淨 fixture ---------- */
 .panel-box{max-width:720px;border:1px solid var(--line);border-radius:10px;padding:16px 18px}
 .panel-box h2{margin:0 0 2px;font-size:1.05rem}
@@ -289,19 +308,68 @@ button.gp:disabled{opacity:.45;cursor:default}
   </label>
   <label>假資料
     <select id="fixture">
-      <option value="clean">案例1 · 乾淨 fixture(語意標籤) 可測試綠框向上</option>
-      <option value="google">案例1-2 · google 搜尋結果(真實) 可測試綠框向上</option>
-      <option value="stretch">案例2 · 鋪滿整列的連結 測試紅框向上</option>
-      <option value="deco">案例3 · 裝飾層 測試分歧點</option>
-      <option value="union">案例3-1 · 三種巢狀形狀(多重 union) 測試多次取樣</option>
-      <option value="card">案例4 · 影片卡片(三類欄位測試) 測試2D擷取</option>
+      <option value="clean">案例1 · 語意清楚的清單 — 練習移動祖先層級</option>
+      <option value="google">案例1-2 · Google 搜尋結果(真實 HTML) — 練習移動祖先層級</option>
+      <option value="stretch">案例2 · 鋪滿整列的連結 — 練習移動樣本層級</option>
+      <option value="deco">案例3 · 裝飾層 — 練習分歧點</option>
+      <option value="union">案例3-1 · 三種巢狀形狀 — 練習新增多個樣本</option>
+      <option value="card">案例4 · 課程影片卡片 — 練習 2D 擷取</option>
     </select>
   </label>
   <span class="sp"></span>
   <span class="hint" id="phase-hint">關閉中</span>
 </header>
 
+<section id="guide">
+  <div class="ghead">
+    <b>教學說明</b>
+    <span class="gname" id="guide-name"></span>
+    <span class="sp"></span>
+    <button class="gp" id="guide-fold">收合</button>
+  </div>
+  <div id="guide-body"></div>
+</section>
+
 <main id="fx"></main>
+
+<template id="gd-anc">
+<p>這個案例可以體驗兩大功能:一是<b>移動共同祖先層級</b>(畫面上的<span class="kw g">綠框</span>),二是<b>調整節點寬鬆程度</b>(面板上排的<span class="kw b">藍色方塊</span>)。</p>
+<p>當你用紅框取樣同一側的兩個項目(例如左一、左二),面板下排就會出現代表共同祖先的<span class="kw g">綠色方塊</span>;往左按一格,祖先層級就往上調一層(爺爺 → 曾祖父)。</p>
+<p>節點寬鬆程度則是<span class="kw b">藍色方塊</span>,只要出現就能點擊切換:</p>
+<ul>
+  <li><code>1</code> — 嚴謹配對,同層級的同一個位置只抓一筆</li>
+  <li><code>*</code> — 寬鬆配對,同層級全部都抓</li>
+</ul>
+</template>
+
+<template id="gd-stretch">
+<p>這個案例可以體驗<b>調整紅框層級</b>。</p>
+<p>紅框取樣完之後,假如面板下方的預覽列整排都呈現為空,有很高的機率是取樣在錯誤的層級 —— 資料存在於父層,但畫面上卻選不到父層。</p>
+<p>這個問題可以透過移動樣本層級解決:找到下排代表樣本的<span class="kw r">紅色方塊</span>,往左按一格即可調高樣本層級。</p>
+</template>
+
+<template id="gd-deco">
+<p>這個案例可以體驗<b>分歧點</b>。</p>
+<p>當紅框取樣的兩個元素具備相同的末端結構,起點卻有不一樣的輪廓,這時工具會自動產生分歧點,將兩個查詢式的結果取聯集。</p>
+<p class="ps">p.s. 本案例有用左側橘線表現兩者的結構差異,但分歧點也有可能出現在兩個視覺一致的樣本上。</p>
+</template>
+
+<template id="gd-union">
+<p>這個案例可以體驗<b>分歧點</b>,以及<b>新增多個樣本</b>。</p>
+<p>因為分歧點的運作原理是直接取聯集,只要使用者願意,可以按加號新增數個輪廓的樣本。</p>
+<p>當樣本數超過兩個後,也可以透過垃圾桶圖示刪除不要的樣本。</p>
+</template>
+
+<template id="gd-card">
+<p>這個案例可以體驗 <b>2D 擷取</b>功能。工具預設是擷取一維資料,倘若樣本圈選在複雜結構,使用者可以透過「2D 擷取」展開額外面板,做更細緻的分欄處理。</p>
+<p>工具會將樣本中的文字拆成三大類,並透過核取方塊,讓使用者決定要擷取哪些資料;勾選後可以在面板下方查看分欄情況:</p>
+<ol>
+  <li>看得見的簡單欄位</li>
+  <li>看得見的複雜文字</li>
+  <li>看不到的文字</li>
+</ol>
+<p>其中第二類「複雜文字」存在額外標記(例如 <code>這題重要&lt;em&gt;畫起來&lt;/em&gt;,考試會考</code>),工具提供使用者做進階的分欄處理:可以自行決定這段文字應該用空白分隔成一欄,或是拆到三個獨立欄位。</p>
+</template>
 
 <template id="fx-clean">
 <section class="panel-box">
@@ -382,37 +450,46 @@ button.gp:disabled{opacity:.45;cursor:default}
 </template>
 <template id="fx-card">
 <section class="demo">
-  <h2>W · 影片卡片(第一/二/三類欄位測試) — 第一張卡含案例一～四的四種夾層形狀</h2>
+  <h2>W · 課程影片卡片(第一/二/三類欄位測試) — 每張卡都含四種夾層形狀</h2>
   <ul class="cards">
     <li class="vc">
-      <a class="vt" href="/watch?v=lbG5hGjStJE" title="播放這部影片"><span class="ttl">單元測試 <b>是什麼</b></span></a>
-      <div class="row"><span>310K</span><div class="dur"><div>26:30</div></div></div>
-      <div class="m">from <div>15h ago</div> to now</div>
-      <div class="m">from <span><span>15h ago</span></span> to now</div>
-      <div class="m"><span>from <span>15h ago</span></span> to now</div>
-      <div class="m">from <span><span>15h ago</span>to now</span></div>
-      <div class="sr">2026-01-03T09:15:00</div>
+      <a class="vt" href="/watch?v=lbG5hGjStJE" title="單元測試是什麼?一次搞懂 Unit Test"><span class="ttl">單元測試 <b>是什麼</b>?一次搞懂 Unit Test</span></a>
+      <div class="row"><span>31 萬次觀看</span><div class="dur"><div>26:30</div></div></div>
+      <div class="m">講師 <div>陳彥霖</div> · 資深後端工程師</div>
+      <div class="m">系列 <span><em>單元測試從零開始</em></span> 第 1 課</div>
+      <div class="m"><span>難度 <span>入門</span></span> · 附範例原始碼</div>
+      <div class="m">字幕 <span><span>繁體中文</span>、English</span></div>
+      <div class="sr">2026年1月3日 09:15 發布 · 觀看次數:312,480 次</div>
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
     </li>
     <li class="vc">
-      <a class="vt" href="/watch?v=aQ7bT2xKm10" title="播放這部影片"><span class="ttl">單元測試 <b>教學</b></span></a>
-      <div class="row"><span>1.2M</span><div class="dur"><div>8:04</div></div></div>
-      <div class="m">from <div>3d ago</div> to now</div>
-      <div class="sr">2025-12-31T20:02:00</div>
+      <a class="vt" href="/watch?v=aQ7bT2xKm10" title="單元測試教學:用 pytest 寫第一支測試"><span class="ttl">單元測試 <b>教學</b>:用 pytest 寫第一支測試</span></a>
+      <div class="row"><span>8.7 萬次觀看</span><div class="dur"><div>18:04</div></div></div>
+      <div class="m">講師 <div>林思妤</div> · Python 課程講師</div>
+      <div class="m">系列 <span><em>單元測試從零開始</em></span> 第 2 課</div>
+      <div class="m"><span>難度 <span>入門</span></span> · 附課後練習</div>
+      <div class="m">字幕 <span><span>繁體中文</span>、日本語</span></div>
+      <div class="sr">2025年12月31日 20:02 發布 · 觀看次數:87,315 次</div>
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
     </li>
     <li class="vc">
-      <a class="vt" href="/watch?v=Zx9pQr4Wd22" title="播放這部影片"><span class="ttl">單元測試 <b>工具</b></span></a>
-      <div class="row"><span>88K</span><div class="dur"><div>12:41</div></div></div>
-      <div class="m">from <div>2w ago</div> to now</div>
-      <div class="sr">2025-12-18T11:40:00</div>
+      <a class="vt" href="/watch?v=Zx9pQr4Wd22" title="單元測試工具比較:pytest、unittest 與 nose2"><span class="ttl">單元測試 <b>工具</b>比較:pytest、unittest 與 nose2</span></a>
+      <div class="row"><span>4.2 萬次觀看</span><div class="dur"><div>12:41</div></div></div>
+      <div class="m">講師 <div>黃柏勳</div> · 測試架構師</div>
+      <div class="m">系列 <span><em>測試工具巡禮</em></span> 第 4 課</div>
+      <div class="m"><span>難度 <span>中階</span></span> · 需先修 Python 基礎</div>
+      <div class="m">字幕 <span><span>繁體中文</span>、English</span></div>
+      <div class="sr">2025年12月18日 11:40 發布 · 觀看次數:41,902 次</div>
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
     </li>
     <li class="vc">
-      <a class="vt" href="/watch?v=Kd3mNv8Ly51" title="播放這部影片"><span class="ttl">Python <b>單元測試</b></span></a>
-      <div class="row"><span>47K</span><div class="dur"><div>1:03:22</div></div></div>
-      <div class="m">from <div>1mo ago</div> to now</div>
-      <div class="sr">2025-12-02T08:05:00</div>
+      <a class="vt" href="/watch?v=Kd3mNv8Ly51" title="Python 單元測試實戰:在 CI 上跑完整測試套件"><span class="ttl">Python <b>單元測試</b>實戰:在 CI 上跑完整測試套件</span></a>
+      <div class="row"><span>2.6 萬次觀看</span><div class="dur"><div>1:03:22</div></div></div>
+      <div class="m">講師 <div>陳彥霖</div> · 資深後端工程師</div>
+      <div class="m">系列 <span><em>單元測試從零開始</em></span> 第 8 課</div>
+      <div class="m"><span>難度 <span>進階</span></span> · 附 CI 設定檔</div>
+      <div class="m">字幕 <span><span>繁體中文</span>、简体中文</span></div>
+      <div class="sr">2025年12月2日 08:05 發布 · 觀看次數:26,144 次</div>
       <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg>
     </li>
   </ul>
@@ -467,7 +544,7 @@ button.gp:disabled{opacity:.45;cursor:default}
 
 /* ═════════ 小工具 ═════════ */
 const $ = s => document.querySelector(s);
-const UI = el => !!(el && el.closest && el.closest('#gp-panel,#gp-overlay,#gp-tip,#gp-dlg,header.sandbox'));
+const UI = el => !!(el && el.closest && el.closest('#gp-panel,#gp-overlay,#gp-tip,#gp-dlg,header.sandbox,#guide'));
 const norm = s => String(s).replace(/\s+/g, ' ').trim();
 const clip = (s, n) => { s = String(s); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 const HTMLNS = 'http://www.w3.org/1999/xhtml';
@@ -1448,14 +1525,23 @@ $('#btn-2dcopy').addEventListener('click', () => {
 
 /* ═════════ 沙盒 chrome ═════════ */
 const FIXTURES = ['clean','google','stretch','deco','union','card'];
+/* 案例1 與 案例1-2 練的是同一組功能,共用同一份說明 */
+const GUIDES = { clean:'anc', google:'anc', stretch:'stretch', deco:'deco', union:'union', card:'card' };
 function loadFixture(which) {
-  const t = document.getElementById('fx-' + (FIXTURES.includes(which) ? which : 'clean'));
-  $('#fx').replaceChildren(t.content.cloneNode(true));
+  if (!FIXTURES.includes(which)) which = 'clean';
+  const sel = $('#fixture');
+  if (sel.value !== which) sel.value = which;
+  $('#fx').replaceChildren(document.getElementById('fx-' + which).content.cloneNode(true));
+  $('#guide-body').replaceChildren(document.getElementById('gd-' + GUIDES[which]).content.cloneNode(true));
+  $('#guide-name').textContent = sel.selectedOptions[0].textContent;
   resetAll();
 }
 $('#fixture').addEventListener('change', e => loadFixture(e.target.value));
 $('#tool-on').addEventListener('change', e => {
   on = e.target.checked; panel.classList.toggle('on', on); resetAll();
+});
+$('#guide-fold').addEventListener('click', e => {
+  e.target.textContent = $('#guide').classList.toggle('min') ? '展開' : '收合';
 });
 $('#btn-abstract').addEventListener('click', () => { abstract = !abstract; render(); });
 $('#btn-txtmode').addEventListener('click', () => { txtMode = (txtMode + 1) % TXTMODES.length; render(); });
