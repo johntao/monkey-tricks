@@ -175,51 +175,57 @@ button.gp{font:inherit;font-size:12px;line-height:1;padding:5px 9px;border:1px s
 button.gp:hover:not(:disabled){background:#d5dbe2}
 button.gp:disabled{opacity:.45;cursor:default}
 
-/* ---------- 第 1 列:查詢式 pills ----------
-   括號內 = 查詢式,兩側(綠框以上、紅框以下)灰掉。不做坍縮 ——
-   坍縮會在按下拖曳的瞬間展開、把落點從游標底下推走,改用橫向捲軸。 */
-#gp-rowwrap{overflow-x:auto;overflow-y:hidden;padding:12px 12px 10px;border-bottom:1px solid var(--line)}
+/* ---------- 第 1 列:兩條軌道 ----------
+   上軌 = 每一節的鬆緊(能不能按、配對一筆還是多筆)。
+   下軌 = 綠框與紅框的邊界(現在在哪、原本在哪、可以搬去哪)。
+   一個問題只在一條軌道上回答 —— 上軌不再兼差表達「在不在查詢式裏」,
+   所以它只需要「灰 = 不能按 / 藍 = 能按」兩種顏色,沒有空心、沒有虛線、沒有第三色。
+   不做坍縮,改用橫向捲軸。 */
+#gp-rowwrap{overflow-x:auto;overflow-y:hidden;padding:12px;border-bottom:1px solid var(--line)}
 #gp-rowwrap::-webkit-scrollbar{height:7px}
 #gp-rowwrap::-webkit-scrollbar-thumb{background:#c9d0d8;border-radius:4px}
-#gp-row{display:flex;align-items:center;gap:3px;white-space:nowrap;min-height:30px;
-  width:max-content;padding-top:16px}
-.pill{display:inline-flex;align-items:center;justify-content:center;
-  font-family:var(--mono);font-size:12px;
-  padding:3px 6px;border-radius:5px;background:#eef1f4;color:var(--fg);position:relative}
-.pill.dim{background:transparent;color:var(--faint)}
-.pill.lock{color:var(--mute)}
-.pill.isgreen{color:var(--green);font-weight:700}
+/* grid + auto-flow:column 讓上下軌自動同欄對齊,欄寬由上軌撐開 ——
+   不需要為了對齊而手算寬度,分岔區把上軌那一列撐高時下軌仍是一條直線。 */
+/* pill 貼齊上軌底部,緊鄰自己的按鈕 —— 分岔把上軌撐高時,置中會把兩者拉開,
+   「哪顆按鈕屬於哪顆 pill」就得靠眼睛拉一條很長的垂直線。分岔本身仍置中。 */
+#gp-row{display:grid;grid-auto-flow:column;grid-template-rows:auto auto;
+  align-items:end;column-gap:3px;row-gap:5px;width:max-content}
+
+/* ── 上軌 ── */
+.pill{display:inline-flex;align-items:center;justify-content:center;gap:3px;
+  font-family:var(--mono);font-size:12px;height:24px;padding:0 6px;border-radius:5px;
+  background:#dde2e8;color:var(--mute)}
+.pill.on{background:transparent;color:var(--fg);padding:0 2px}
 .pill .tag{pointer-events:none}
-/* 序號片:實心 = 查詢式裏真的有 [n];空心 = 真的沒有。畫面即查詢式,不需要翻譯。 */
-.pill .ix{margin-left:1px;padding:0 3px;border-radius:3px;cursor:pointer;
-  border:1px solid var(--blue);color:var(--blue);background:transparent;opacity:.55}
-.pill .ix.on{background:var(--blue);color:#fff;opacity:1}
-.pill .ix:hover{opacity:1;box-shadow:0 0 0 2px rgba(10,102,194,.22)}
+/* 序號片:實心藍且有數字 = 套用 predicate;實心藍留空 = 沒有 predicate。
+   寬度兩態相同 —— 切換 predicate 不該讓整列重排。 */
+.pill .ix{display:inline-flex;align-items:center;justify-content:center;
+  min-width:18px;height:18px;padding:0 3px;border-radius:4px;cursor:pointer;
+  background:var(--blue);color:#fff;font-size:11px}
+.pill .ix:hover{box-shadow:0 0 0 3px rgba(10,102,194,.22)}
+/* 抽象:整顆 pill 就是那個方塊。1 = 配對一筆,* = 配對多筆,同一個語意軸。 */
+.pill.abs{min-width:24px;padding:0 4px}
+.pill.abs.on{background:var(--blue);color:#fff;cursor:pointer}
+.pill.abs.on:hover{box-shadow:0 0 0 3px rgba(10,102,194,.22)}
 
-/* 抽象化:整顆 pill 就是開關。灰 = 不能按;實心 = 序號開著;空心 = 序號關著。
-   沒有開關的 pill 一律沒有 hover 效果 —— 會亮的東西必須是能按的東西。 */
-.pill.abs{min-width:22px;height:17px;padding:0 4px;border-radius:4px}
-.pill.abs.lock{background:#dde2e8}
-.pill.abs.dim{background:transparent;border:1px dashed #ccd3da}
-.pill.abs.isgreen{border-color:var(--green);border-style:solid}
-.pill.abs.on{background:var(--blue);cursor:pointer}
-.pill.abs.off{background:var(--bg);border:2px solid var(--blue);cursor:pointer}
-.pill.abs.on:hover,.pill.abs.off:hover{box-shadow:0 0 0 3px rgba(10,102,194,.22)}
-
-
-/* ▼ = 現在(可拖);▽ = 原始位置。標記指著「哪一顆 pill」而不是縫隙 ——
-   縫隙上的直立拉桿會讓人分不清它屬於左邊還是右邊那一層。
-   紅綠都只能往左離開原始位置,所以 ▽ 永遠在 ▼ 的右邊。 */
-.mk {position: absolute;left: 50%;transform: translateX(-50%);top: -16px;font-size: 11px;
-  line-height: 1.6;pointer-events: none;user-select: none;width: 100%;text-align: center;height: 100%}
-.mk.g{color:var(--green)}
-.mk.r{color:var(--red)}
-.mk.ghost{opacity:.5}
-.mk.cur{pointer-events:auto;cursor:ew-resize}
+/* ── 下軌:高度是上軌的一半 ──
+   實心 = 框現在在這裏(不可點);空心 = 點一下把框搬過來。
+   綠邊／紅邊空心 = 那個框的原始位置。灰邊不區分綠紅 —— §2 保證兩者可動範圍
+   不重疊且首尾相接,位置本身就是答案,再上色是重複編碼。 */
+.sb{height:12px;border-radius:3px;border:2px solid #c3cad2;background:var(--bg);cursor:pointer}
+.sb:hover{border-color:var(--blue);box-shadow:0 0 0 3px rgba(10,102,194,.18)}
+.sb.ghome{border-color:var(--green)}
+.sb.rhome{border-color:var(--red)}
+.sb.cur{cursor:default;pointer-events:none}
+.sb.cur.g{background:var(--green);border-color:var(--green)}
+.sb.cur.r{background:var(--red);border-color:var(--red)}
+/* 分岔區沒有停靠點:各分支在那幾層的標籤本來就不一致,對不齊就不該有按鈕。
+   佔位而不畫,下軌才不會出現「按了沒反應」的第六種狀態。 */
+.nostop{height:12px}
 
 /* 分岔:同一列局部裂成兩線再合回來(捷運路線圖),不需要符號或圖例。
    分歧槽即使沒有分岔也存在 —— ＋ 必須永遠在,否則沒有分岔時就長不出第一條岔路。 */
-.fork{display:inline-flex;flex-direction:column;gap:3px;
+.fork{align-self:center;display:inline-flex;flex-direction:column;gap:3px;
   border-left:2px solid var(--faint);border-right:2px solid var(--faint);
   border-radius:6px;padding:3px 5px;margin:0 2px}
 .fork.bare{border-color:transparent;padding:3px 1px}
@@ -231,9 +237,9 @@ button.gp:disabled{opacity:.45;cursor:default}
 .btrash:hover{opacity:1;filter:none;background:rgba(200,16,46,.12)}
 .btrash.dead{opacity:.18;cursor:default}
 .bplus{align-self:center;font-size:11px;line-height:1;color:var(--mute);cursor:pointer;
-  border:1px dashed var(--line);border-radius:4px;padding:1px 7px;margin-top:1px;background:var(--bg)}
+  border:1px solid var(--line);border-radius:4px;padding:2px 7px;margin-top:1px;background:var(--bg)}
 .bplus:hover{color:var(--blue);border-color:var(--blue)}
-.bplus.armed{color:#fff;background:var(--blue);border-color:var(--blue);border-style:solid}
+.bplus.armed{color:#fff;background:var(--blue);border-color:var(--blue)}
 
 /* ---------- 預覽列表 = 差異檢視器 ----------
    消失的列位置保留不重排,否則整份列表會跳動、眼睛得重找位置。 */
@@ -501,7 +507,7 @@ let redUp = 0, greenUp = 0;
 let overrides = new Map();               /* node.key → 'idx' | 'bare' */
 let abstract = true;
 let G = null, matched = [], preview = null;
-let hoverEl = null, dragging = null, pendingDestructive = null;
+let hoverEl = null, pendingDestructive = null;
 let moved = true;                        /* 游標自上次點擊後是否移動過 */
 let toastMsg = '';
 
@@ -732,57 +738,68 @@ function toggleNode(n) {
   overrides.set(n.key, n.state === 'idx' ? 'bare' : 'idx');
   moved = false; clearPreview(); rebuild();
 }
+/* 上軌:灰 = 不能按,藍 = 能按。不再兼差表達「在不在查詢式裏」—— 那件事下軌回答。 */
 function pillEl(n) {
   const p = el('pill' + (abstract ? ' abs' : ''));
-  if (n.visible) p.classList.add(n.state === 'idx' ? 'on' : 'off');
-  else p.classList.add('lock');
-  if (!abstract) p.appendChild(el('tag', n.tag));
-  if (n.visible) {
-    const hit = abstract ? p : el('ix' + (n.state === 'idx' ? ' on' : ''), '[' + n.idxs[0] + ']');
-    hit.addEventListener('mouseenter', () => {
-      if (!armed()) return;
-      const s = n.state; n.state = s === 'idx' ? 'bare' : 'idx';
-      const r = runOf(G); n.state = s; setPreview(r);
-    });
-    hit.addEventListener('mouseleave', clearPreview);
-    hit.addEventListener('click', e => { e.stopPropagation(); toggleNode(n); });
-    if (!abstract) p.appendChild(hit);
+  if (!n.visible) { if (!abstract) p.appendChild(el('tag', n.tag)); return p; }
+  p.classList.add('on');
+  let hit;
+  if (abstract) {
+    /* 抽象講基數:1 = 配對一筆,* = 配對多筆 */
+    p.textContent = n.state === 'idx' ? '1' : '*';
+    hit = p;
+  } else {
+    /* 標記講字面查詢式:方塊裏就是實際序號,畫面逐字即 predicate。
+       移除後方塊留空但同寬 —— 切換不該讓整列重排。 */
+    p.appendChild(el('tag', n.tag));
+    hit = el('ix', n.state === 'idx' ? String(n.idxs[0]) : '');
+    p.appendChild(hit);
   }
-  if (n.r != null && G.stops.includes(n.r)) p.dataset.rstop = n.r;
-  if (n.k != null) p.dataset.gstop = n.k;
+  hit.addEventListener('mouseenter', () => {
+    if (!armed()) return;
+    const s = n.state; n.state = s === 'idx' ? 'bare' : 'idx';
+    const r = runOf(G); n.state = s; setPreview(r);
+  });
+  hit.addEventListener('mouseleave', clearPreview);
+  hit.addEventListener('click', e => { e.stopPropagation(); toggleNode(n); });
   return p;
 }
-function dimPill(e_, opts) {
-  const p = el('pill dim' + (abstract ? ' abs' : ''));
+function dimPill(e_) {
+  const p = el('pill' + (abstract ? ' abs' : ''));
   if (!abstract) p.appendChild(el('tag', e_.tagName.toLowerCase()));
-  if (opts.gstop != null) p.dataset.gstop = opts.gstop;
-  if (opts.rstop != null) p.dataset.rstop = opts.rstop;
-  if (opts.green) p.classList.add('isgreen');
   return p;
 }
-/* ▼ = 現在(可拖);▽ = 原始位置。標記指著哪一顆 pill,不是指著縫隙。 */
-function mark(host, kind, cur) {
-  if (!host) return;
-  const m = el('mk ' + kind + (cur ? ' cur' : ' ghost'), cur ? '▼' : '▽');
-  if (cur) m.addEventListener('mousedown', e => startDrag(e, kind === 'g' ? 'green' : 'red'));
-  host.appendChild(m);
+
+/* 下軌。實心 = 框現在在這裏;空心 = 點一下把框搬過來,綠邊／紅邊 = 那個框的原始位置。
+   hover 預覽接替了拖曳時的即時預覽 —— 搬邊界是最容易猜錯的動作,不能變成盲操作。 */
+function stopBtn(kind, v) {
+  const cur = kind === 'g' ? G.gUp : G.rUp;
+  const b = el('sb ' + (v === cur ? 'cur ' + kind : v === 0 ? (kind === 'g' ? 'ghome' : 'rhome') : ''));
+  if (v === cur) { b.title = kind === 'g' ? '綠框目前在這一層' : '紅框目前在這一層'; return b; }
+  b.title = (kind === 'g' ? '把綠框搬到這一層' : '把紅框搬到這一層') + (v === 0 ? '(原始位置)' : '');
+  b.addEventListener('mouseenter', () => {
+    if (!armed()) return;
+    setPreview(matchesIfBound(kind === 'g' ? v : greenUp, kind === 'g' ? redUp : v));
+  });
+  b.addEventListener('mouseleave', clearPreview);
+  b.addEventListener('click', () => {
+    if (kind === 'g') greenUp = v; else redUp = v;
+    moved = false; clearPreview(); rebuild();
+  });
+  return b;
 }
 
 function renderRow() {
   rowEl.replaceChildren();
   if (!G) return;
+  const cells = [];
 
-  /* 綠框以上:灰。不做坍縮 —— 坍縮會在按下拖曳的瞬間展開、把落點從游標底下推走。 */
-  G.strip.filter(s => s.k > G.gUp).forEach(s => rowEl.appendChild(dimPill(s.el, { gstop: s.k })));
-
-  const gEntry = G.strip.find(s => s.k === G.gUp);
-  const gPill = dimPill(gEntry.el, { gstop: G.gUp, green: true });
-  rowEl.appendChild(gPill);
-  mark(gPill, 'g', true);
-
-  let ncaPill = null;
-  G.chainNodes.forEach(n => { ncaPill = pillEl(n); rowEl.appendChild(ncaPill); });
-  if (G.gUp !== 0) mark(ncaPill, 'g', false);   /* 只能往左離開原位 ⇒ ▽ 永遠在 ▼ 右邊 */
+  /* 綠框以上 */
+  G.strip.filter(s => s.k > G.gUp).forEach(s => cells.push([dimPill(s.el), stopBtn('g', s.k)]));
+  /* 綠框自己 */
+  cells.push([dimPill(G.strip.find(s => s.k === G.gUp).el), stopBtn('g', G.gUp)]);
+  /* NCA 鏈 */
+  G.chainNodes.forEach(n => cells.push([pillEl(n), stopBtn('g', n.k)]));
 
   /* 分歧槽:即使目前沒有分岔也存在。plus 必須永遠在 ——
      「漏抓就再點一個範例」正是要在沒有分岔時把第一條岔路生出來。 */
@@ -812,24 +829,21 @@ function renderRow() {
     phase = phase === 'add' ? 'tune' : 'add'; pendingDestructive = null; render();
   });
   fk.appendChild(plus);
-  rowEl.appendChild(fk);
+  cells.push([fk, el('nostop')]);
 
-  let redPill = null;
-  G.sufNodes.forEach(n => { redPill = pillEl(n); rowEl.appendChild(redPill); });
-  mark(redPill, 'r', true);
-
+  /* 共同結尾 → 紅框 */
+  G.sufNodes.forEach(n => cells.push([pillEl(n), G.stops.includes(n.r) ? stopBtn('r', n.r) : el('nostop')]));
+  /* 紅框以下 */
   const o0 = examples[0].origin;
-  let last = null;
-  for (let r = G.rUp - 1; r >= 0; r--) {
-    last = dimPill(ancAt(o0, r), G.stops.includes(r) ? { rstop: r } : {});
-    rowEl.appendChild(last);
-  }
-  if (G.rUp !== 0) mark(last, 'r', false);
+  for (let r = G.rUp - 1; r >= 0; r--)
+    cells.push([dimPill(ancAt(o0, r)), G.stops.includes(r) ? stopBtn('r', r) : el('nostop')]);
+
+  for (const [top, bot] of cells) { rowEl.appendChild(top); rowEl.appendChild(bot); }
 }
 
 /* 不坍縮之後第 1 列可能很長,查詢式本體會被推到捲軸外 —— 每次重畫把它捲回來 */
 function scrollQueryIntoView() {
-  const g = rowEl.querySelector('.mk.g.cur'), r = rowEl.querySelector('.mk.r.cur');
+  const g = rowEl.querySelector('.sb.cur.g'), r = rowEl.querySelector('.sb.cur.r');
   if (!g || !r) return;
   const w = wrapEl.getBoundingClientRect();
   const a = g.getBoundingClientRect().left, b = r.getBoundingClientRect().right;
@@ -911,7 +925,7 @@ function render() {
   $('#phase-hint').textContent = !on ? '關閉中'
     : phase === 'select' ? '點兩個看起來同一類的東西'
     : phase === 'add' ? '點一個目前沒抓到的同類元素'
-    : '拖 ▼ 改範圍 · 點 pill 改鬆緊 · 右鍵紅框可移除';
+    : '下排方塊改範圍 · 上排方塊改鬆緊 · 右鍵紅框可移除';
   $('#btn-abstract').textContent = abstract ? '抽象' : '標記';
   $('#btn-abstract').title = abstract ? '目前隱藏標記名 — 點一下顯示' : '目前顯示標記名 — 點一下隱藏';
   $('#btn-txtmode').textContent = TXTMODES[txtMode].label;
@@ -941,47 +955,16 @@ function rebuild() {
 function resetAll() {
   examples = []; overrides.clear();
   redUp = 0; greenUp = 0; G = null; matched = []; preview = null;
-  hoverEl = null; dragging = null; pendingDestructive = null; toastMsg = ''; lastPicked = null;
+  hoverEl = null; pendingDestructive = null; toastMsg = ''; lastPicked = null;
   if (dlg.open) dlg.close();
   phase = on ? 'select' : 'idle';
   tipEl.style.display = 'none';
   rebuild();
 }
 
-/* ═════════ ▼ 拖曳 ═════════
-   按下不重畫任何東西:展開或重排會把落點從游標底下推走。 */
-function startDrag(e, kind) {
-  e.preventDefault(); e.stopPropagation();
-  const attr = kind === 'green' ? 'gstop' : 'rstop';
-  const stops = [...rowEl.querySelectorAll('[data-' + attr + ']')].map(p => {
-    const r = p.getBoundingClientRect();
-    return { v: +p.dataset[attr], x: r.left + r.width / 2 };
-  });
-  if (!stops.length) return;
-  const hd = e.currentTarget;
-  const r = hd.getBoundingClientRect();
-  dragging = { kind, stops, hd, base: r.left + r.width / 2, v: kind === 'green' ? greenUp : redUp };
-  hd.classList.add('grab');
-}
-addEventListener('mousemove', e => {
-  moved = true;
-  if (!dragging) return;
-  let best = dragging.stops[0];
-  for (const s of dragging.stops) if (Math.abs(s.x - e.clientX) < Math.abs(best.x - e.clientX)) best = s;
-  dragging.hd.style.transform = 'translateX(calc(-50% + ' + (best.x - dragging.base) + 'px))';
-  if (best.v !== dragging.v) {
-    dragging.v = best.v;
-    setPreview(matchesIfBound(dragging.kind === 'green' ? best.v : greenUp,
-                              dragging.kind === 'green' ? redUp : best.v));
-  }
-}, true);
-addEventListener('mouseup', () => {
-  if (!dragging) return;
-  const d = dragging; dragging = null;
-  d.hd.classList.remove('grab');
-  if (d.kind === 'green') greenUp = d.v; else redUp = d.v;
-  moved = false; clearPreview(); rebuild();
-}, true);
+/* 點擊後游標還停在原處,DOM 重建會讓瀏覽器對新元素補送 mouseenter ——
+   若不擋,使用者會立刻看到一次反向預覽。必須先移開再回來才算數。 */
+addEventListener('mousemove', () => { moved = true; }, true);
 
 /* ═════════ 頁面互動 ═════════ */
 const picking = () => phase === 'select' || phase === 'add';
