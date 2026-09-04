@@ -1,0 +1,21 @@
+#!/bin/sh
+# 安裝連結的 href 是 build 產物。改完工具程式碼忘了重跑 build 是靜默失敗 ——
+# 頁面看起來一切正常, 但拖出去的書籤是舊的。這裏擋住。
+#
+# 驗的是「已 stage 的那一份」而不是工作目錄, 所以 partial add 也擋得住。
+set -e
+F=generic-parser/index.html
+
+git diff --cached --name-only --diff-filter=ACM | grep -qx "$F" || exit 0
+
+if [ ! -d generic-parser/node_modules ]; then
+  echo "pre-commit: 缺 generic-parser/node_modules, 無法驗證書籤是否為最新" >&2
+  echo "            先跑: (cd generic-parser && npm i)" >&2
+  echo "            確定要跳過請用 git commit --no-verify" >&2
+  exit 1
+fi
+
+TMP=$(mktemp) || exit 1
+trap 'rm -f "$TMP"' EXIT
+git show ":$F" > "$TMP"
+node generic-parser/build-bookmarklet.mjs --check "$TMP"

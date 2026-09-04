@@ -7,11 +7,21 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { minify } from 'terser';
 import CleanCSS from 'clean-css';
 
+/* 用法:
+     node build-bookmarklet.mjs              壓縮並寫回 index.html
+     node build-bookmarklet.mjs --check [檔]  只驗證 href 是不是最新的, 不寫檔
+   --check 給 pre-commit hook 用 —— 它餵進來的是「已 stage 的那份內容」,
+   所以工作目錄新、暫存區舊的情況也擋得住。 */
+const args = process.argv.slice(2);
+const CHECK = args.includes('--check');
 const FILE = new URL('./index.html', import.meta.url);
+const IN = args.find(a => !a.startsWith('--')) || FILE;
+
 /* Firefox Places 的 MAX_URL_LENGTH。超過就存不進書籤列, 而且是靜默失敗。 */
 const HARD = 65536, WARN = 55000;
+const LINK = /(<a class="bm" id="bm" href=)(?:"([^"]*)"|'([^']*)')/;
 
-const src = readFileSync(FILE, 'utf8');
+const src = readFileSync(IN, 'utf8');
 
 const slice = (name, open, close) => {
   const a = src.indexOf(open), b = src.indexOf(close);
@@ -55,6 +65,18 @@ if (out.error) throw out.error;
    省下的那幾 k 換不到什麼, 現在的餘裕夠。 */
 const url = 'javascript:' + encodeURIComponent(out.code);
 
+if (CHECK) {
+  const m = src.match(LINK);
+  if (!m) { console.error('✗ 找不到安裝連結'); process.exit(1); }
+  const cur = (m[2] ?? m[3]).replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>').replace(/&#39;/g, "'");
+  if (cur === url) { console.log('✓ 書籤是最新的'); process.exit(0); }
+  console.error('✗ 安裝連結跟工具原始碼對不上 —— 改完程式碼忘了重建。');
+  console.error(`  目前 ${cur.length} 字元, 應為 ${url.length} 字元`);
+  console.error('  修法: (cd generic-parser && node build-bookmarklet.mjs) 然後把 index.html 一起 git add');
+  process.exit(1);
+}
+
 const pct = n => (n / HARD * 100).toFixed(0) + '%';
 const row = (k, a, b) => console.log(`  ${k.padEnd(12)} ${String(a).padStart(7)} → ${String(b).padStart(7)}`);
 console.log('切出來的四段:');
@@ -74,7 +96,6 @@ if (url.length > WARN) console.warn(`\n⚠ 已超過 ${WARN} 字元, 餘裕不�
    encodeURIComponent 產出的字串裏本來就不會有引號, 但還是擋著。 */
 const attr = url.replace(/&/g, '&amp;').replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;').replace(/'/g, '&#39;');
-const re = /(<a class="bm" id="bm" href=)(?:"[^"]*"|'[^']*')/;
-if (!re.test(src)) throw new Error('找不到安裝連結 <a class="bm" id="bm" href=...>');
-writeFileSync(FILE, src.replace(re, `$1'${attr}'`), 'utf8');
+if (!LINK.test(src)) throw new Error('找不到安裝連結 <a class="bm" id="bm" href=...>');
+writeFileSync(FILE, src.replace(LINK, `$1'${attr}'`), 'utf8');
 console.log('\n✓ 已寫回 generic-parser/index.html 的安裝連結');
