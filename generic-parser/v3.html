@@ -283,10 +283,10 @@ button.gp:disabled{opacity:.45;cursor:default}
     <select id="fixture">
       <option value="clean">案例1 · 乾淨 fixture(語意標籤) 可測試綠框向上</option>
       <option value="google">案例1-2 · google 搜尋結果(真實) 可測試綠框向上</option>
-      <option value="deco">案例2 · 裝飾層 測試分歧點</option>
-      <option value="stretch">案例3 · 鋪滿整列的連結 測試紅框向上</option>
-      <option value="union">案例4 · 三種巢狀形狀(多重 union) 測試多次取樣</option>
-      <option value="card">案例5 · 影片卡片(三類欄位測試) 測試2D擷取</option>
+      <option value="stretch">案例2 · 鋪滿整列的連結 測試紅框向上</option>
+      <option value="deco">案例3 · 裝飾層 測試分歧點</option>
+      <option value="union">案例3-1 · 三種巢狀形狀(多重 union) 測試多次取樣</option>
+      <option value="card">案例4 · 影片卡片(三類欄位測試) 測試2D擷取</option>
     </select>
   </label>
   <span class="sp"></span>
@@ -297,8 +297,7 @@ button.gp:disabled{opacity:.45;cursor:default}
 
 <template id="fx-clean">
 <section class="panel-box">
-  <h2>推薦讀物</h2>
-  <div class="panel-note">共 8 筆,依熱門度排序</div>
+  <h2>其他人也搜尋了以下項目</h2>
   <div class="panel-body">
     <div class="grid">
       <ul class="col">
@@ -416,10 +415,10 @@ button.gp:disabled{opacity:.45;cursor:default}
 
 <div id="gp-panel">
   <div class="head">
-    <b>擷取</b>
+    <b>資料擷取小幫手</b>
     <span id="gp-phase"></span>
     <span class="sp"></span>
-    <button class="gp" id="btn-abstract">抽象</button>
+    <button class="gp" id="btn-abstract">簡明模式</button>
     <button class="gp" id="btn-min">－</button>
   </div>
   <div class="body">
@@ -835,7 +834,7 @@ function renderRow() {
     fk.appendChild(br);
   });
   const plus = el('bplus' + (phase === 'add' ? ' armed' : ''), '＋');
-  plus.title = '再點一個目前沒抓到的同類元素,長出一條新的走法';
+  plus.title = '再次透過紅框取樣,長出一條新的走法';
   plus.addEventListener('click', () => {
     phase = phase === 'add' ? 'tune' : 'add'; pendingDestructive = null; render();
   });
@@ -936,15 +935,15 @@ function render() {
   $('#phase-hint').textContent = !on ? '關閉中'
     : phase === 'select' ? '點兩個看起來同一類的東西'
     : phase === 'add' ? '點一個目前沒抓到的同類元素'
-    : '下排方塊改範圍 · 上排方塊改鬆緊 · 點紅框可移除';
-  $('#btn-abstract').textContent = abstract ? '抽象' : '標記';
+    : '下排方塊調整錨點範圍 · 上排方塊調整配對寬鬆 · 點紅框可移除';
+  $('#btn-abstract').textContent = abstract ? '簡明模式' : '工程宅模式';
   $('#btn-abstract').title = abstract ? '目前隱藏標記名 — 點一下顯示' : '目前顯示標記名 — 點一下隱藏';
   $('#btn-txtmode').textContent = TXTMODES[txtMode].label;
   $('#btn-txtmode').title = TXTMODES[txtMode].tip;
   const ready = !!G;
   $('#btn-copy').disabled = !ready; $('#btn-extract').disabled = !ready;
   $('#btn-2d').disabled = !can2d;
-  $('#btn-2d').title = can2d ? '把一筆記錄拆成多欄'
+  $('#btn-2d').title = can2d ? '把一維資料拆成多欄位'
     : ready ? '這個紅框只抓得到一欄 — 沒有可分的欄位' : '';
   $('#gp-msg').textContent = toastMsg || stateMsg();
   renderRow(); renderCount(); renderList(); scrollQueryIntoView();
@@ -1330,7 +1329,7 @@ function renderDlg() {
   const cols = colsOf(), cn = new Map();
   cols.forEach((parts, i) => parts.forEach(p => cn.set(p.key, i)));
 
-  const NAMES = { 1: '第一類', 2: '第二類', 3: '第三類' };
+  const NAMES = { 1: '第一類 (看得到的簡單欄位)', 2: '第二類 (看得到的複雜文字)', 3: '第三類 (看不到的欄位)' };
   let first = true;
   for (const cat of [1, 2, 3]) {
     const rs = fxTree.rows.filter(r => r.cat === cat && !isHid(r));
