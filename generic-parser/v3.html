@@ -396,53 +396,56 @@ button.gp:disabled{opacity:.45;cursor:default}
 </template>
 
 <template id="fx-stretch">
-<table class="rows">
-  <thead><tr><th>日期</th><th>對象</th><th>金額</th></tr></thead>
-  <tbody>
-    <tr class="row"><td>2026-01-03<a class="stretch" href="#"></a></td><td>某某公司</td><td>1,234</td></tr>
-    <tr class="row"><td>2026-01-04<a class="stretch" href="#"></a></td><td>什什行店</td><td>987</td></tr>
-    <tr class="row"><td>2026-01-05<a class="stretch" href="#"></a></td><td>大大集團</td><td>5,432</td></tr>
-    <tr class="row"><td>2026-01-06<a class="stretch" href="#"></a></td><td>小小工作室</td><td>210</td></tr>
-    <tr class="row"><td>2026-01-07<a class="stretch" href="#"></a></td><td>中中企業</td><td>3,600</td></tr>
-    <tr class="row"><td>2026-01-08<a class="stretch" href="#"></a></td><td>方方科技</td><td>78</td></tr>
-    <tr class="row"><td>2026-01-09<a class="stretch" href="#"></a></td><td>圓圓貿易</td><td>4,050</td></tr>
-    <tr class="row"><td>2026-01-10<a class="stretch" href="#"></a></td><td>長長物流</td><td>1,999</td></tr>
-  </tbody>
-</table>
+<section class="demo">
+  <h2>信用卡消費明細 · 整列都被一個看不見的連結蓋住,點下去只會抓到空白</h2>
+  <table class="rows">
+    <thead><tr><th>日期</th><th>消費對象</th><th>金額</th></tr></thead>
+    <tbody>
+      <tr class="row"><td>2026-01-03<a class="stretch" href="#"></a></td><td>全家便利商店 信義門市</td><td>129</td></tr>
+      <tr class="row"><td>2026-01-04<a class="stretch" href="#"></a></td><td>台灣電力公司 電費</td><td>1,842</td></tr>
+      <tr class="row"><td>2026-01-05<a class="stretch" href="#"></a></td><td>中華電信 月租費</td><td>599</td></tr>
+      <tr class="row"><td>2026-01-06<a class="stretch" href="#"></a></td><td>誠品書店 松菸店</td><td>870</td></tr>
+      <tr class="row"><td>2026-01-07<a class="stretch" href="#"></a></td><td>Uber Eats 外送訂單</td><td>285</td></tr>
+      <tr class="row"><td>2026-01-08<a class="stretch" href="#"></a></td><td>國泰人壽 續期保費</td><td>3,600</td></tr>
+      <tr class="row"><td>2026-01-09<a class="stretch" href="#"></a></td><td>悠遊卡自動加值</td><td>500</td></tr>
+      <tr class="row"><td>2026-01-10<a class="stretch" href="#"></a></td><td>蝦皮購物 訂單</td><td>1,299</td></tr>
+    </tbody>
+  </table>
+</section>
 </template>
 
 <template id="fx-deco">
 <section class="demo">
-  <h2>X · 裝飾層夾在路徑中間(li[1]/a vs li[2]/div.promo/a)</h2>
+  <h2>清單一 · 被推薦的那一筆多包了一層外框(橘線處)</h2>
   <ul class="list">
-    <li class="item"><a class="t" href="#">項目 A</a></li>
-    <li class="item"><div class="promo"><a class="t" href="#">項目 B(推薦)</a></div></li>
-    <li class="item"><a class="t" href="#">項目 C</a></li>
-    <li class="item"><a class="t" href="#">項目 D</a></li>
+    <li class="item"><a class="t" href="#">pytest fixture 到底該寫在哪一層?</a></li>
+    <li class="item"><div class="promo"><a class="t" href="#">一次搞懂 mock 與 stub 的差別(編輯推薦)</a></div></li>
+    <li class="item"><a class="t" href="#">測試覆蓋率 80% 這個數字是怎麼來的</a></li>
+    <li class="item"><a class="t" href="#">本機測試都會過,CI 上卻一直失敗</a></li>
   </ul>
 </section>
 <section class="demo">
-  <h2>Y · 分歧在相對路徑頂端(article vs aside/article)</h2>
+  <h2>清單二 · 被推薦的那一筆連整篇貼文都被外框包起來(橘線處)</h2>
   <div class="feed">
-    <article class="post"><h3>標題 A</h3><p class="meta">2026-01-01</p></article>
-    <aside class="promo"><article class="post"><h3>標題 B</h3><p class="meta">2026-01-02</p></article></aside>
-    <article class="post"><h3>標題 C</h3><p class="meta">2026-01-03</p></article>
-    <article class="ad">贊助內容(誘餌:沒有 h3 與 p)</article>
+    <article class="post"><h3>pytest 8.0 釋出,parametrize 語法有變</h3><p class="meta">2026-01-01</p></article>
+    <aside class="promo"><article class="post"><h3>為什麼你的測試越跑越慢?從 fixture scope 查起</h3><p class="meta">2026-01-02</p></article></aside>
+    <article class="post"><h3>用 hypothesis 寫屬性測試的第一週心得</h3><p class="meta">2026-01-03</p></article>
+    <article class="ad">贊助內容 · 雲端測試平台限時 7 折(誘餌:沒有標題也沒有日期)</article>
   </div>
 </section>
 </template>
 
 <template id="fx-union">
 <section class="demo">
-  <h2>Z · 同一份清單三種巢狀形狀(li/a、li/div/a、li/div/div/a) — 需要三條 union 分支</h2>
+  <h2>一份清單三種寫法 · 一般、推薦、置頂各自包了不同層數的外框</h2>
   <ul class="list">
-    <li class="item"><a class="t" href="#">項目 一</a></li>
-    <li class="item"><div class="promo"><a class="t" href="#">項目 二(推薦)</a></div></li>
-    <li class="item"><a class="t" href="#">項目 三</a></li>
-    <li class="item"><div class="badge"><div class="wrap"><a class="t" href="#">項目 四(置頂)</a></div></div></li>
-    <li class="item"><div class="promo"><a class="t" href="#">項目 五(推薦)</a></div></li>
-    <li class="item"><a class="t" href="#">項目 六</a></li>
-    <li class="item"><div class="badge"><div class="wrap"><a class="t" href="#">項目 七(置頂)</a></div></div></li>
+    <li class="item"><a class="t" href="#">單元測試該不該測 private method?</a></li>
+    <li class="item"><div class="promo"><a class="t" href="#">新手最常踩的 5 個測試地雷(編輯推薦)</a></div></li>
+    <li class="item"><a class="t" href="#">一支測試裡 assert 寫太多算壞味道嗎?</a></li>
+    <li class="item"><div class="badge"><div class="wrap"><a class="t" href="#">【公告】測試板發文規範(置頂)</a></div></div></li>
+    <li class="item"><div class="promo"><a class="t" href="#">從 0 到 1 建立團隊的測試文化(編輯推薦)</a></div></li>
+    <li class="item"><a class="t" href="#">CI 跑一次要 20 分鐘,有辦法再快嗎?</a></li>
+    <li class="item"><div class="badge"><div class="wrap"><a class="t" href="#">【公告】每週測試讀書會開放報名(置頂)</a></div></div></li>
   </ul>
 </section>
 </template>
@@ -452,7 +455,7 @@ button.gp:disabled{opacity:.45;cursor:default}
 </template>
 <template id="fx-card">
 <section class="demo">
-  <h2>W · 課程影片卡片(第一/二/三類欄位測試) — 每張卡都含四種夾層形狀</h2>
+  <h2>課程影片清單 · 每張卡片都同時有簡單欄位、複雜文字與看不到的資料</h2>
   <ul class="cards">
     <li class="vc">
       <a class="vt" href="/watch?v=lbG5hGjStJE" title="單元測試是什麼?一次搞懂 Unit Test"><span class="ttl">單元測試 <b>是什麼</b>?一次搞懂 Unit Test</span></a>
