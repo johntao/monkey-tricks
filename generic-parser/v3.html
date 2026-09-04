@@ -186,8 +186,11 @@ button.gp:disabled{opacity:.45;cursor:default}
 #gp-rowwrap::-webkit-scrollbar-thumb{background:#c9d0d8;border-radius:4px}
 /* grid + auto-flow:column 讓上下軌自動同欄對齊,欄寬由上軌撐開 ——
    不需要為了對齊而手算寬度,分岔區把上軌那一列撐高時下軌仍是一條直線。 */
-/* pill 貼齊上軌底部,緊鄰自己的按鈕 —— 分岔把上軌撐高時,置中會把兩者拉開,
-   「哪顆按鈕屬於哪顆 pill」就得靠眼睛拉一條很長的垂直線。分岔本身仍置中。 */
+/* pill 貼齊上軌底部、sb 貼齊下軌頂部 —— 兩者永遠只隔一個 row-gap,
+   「哪顆按鈕屬於哪顆 pill」不需要靠眼睛拉一條長垂直線。
+   分岔跨兩軌(grid-row:span 2)而不是只佔上軌:grid 把跨軌項目的多餘空間
+   平均分給兩條 auto 軌,於是 r1 = 24 + E/2、r2 = 12 + E/2,pill+sb 這一叢的
+   中心正好落在容器正中。只佔上軌的話 E 全灌進 r1,整叢會被壓到容器下緣。 */
 #gp-row{display:grid;grid-auto-flow:column;grid-template-rows:auto auto;
   align-items:end;column-gap:3px;row-gap:5px;width:max-content}
 
@@ -212,7 +215,7 @@ button.gp:disabled{opacity:.45;cursor:default}
    實心 = 框現在在這裏(不可點);空心 = 點一下把框搬過來。
    綠邊／紅邊空心 = 那個框的原始位置。灰邊不區分綠紅 —— §2 保證兩者可動範圍
    不重疊且首尾相接,位置本身就是答案,再上色是重複編碼。 */
-.sb{height:12px;border-radius:3px;border:1px solid #c3cad2;background:var(--bg);cursor:pointer}
+.sb{align-self:start;height:12px;border-radius:3px;border:1px solid #c3cad2;background:var(--bg);cursor:pointer}
 .sb.ghome{border-color:var(--green)}
 .sb.rhome{border-color:var(--red)}
 .sb:hover{border-color:var(--blue);box-shadow:0 0 0 2px rgba(10,102,194,.18)}
@@ -220,12 +223,13 @@ button.gp:disabled{opacity:.45;cursor:default}
 .sb.cur.g{background:var(--green);border-color:var(--green)}
 .sb.cur.r{background:var(--red);border-color:var(--red)}
 /* 分岔區沒有停靠點:各分支在那幾層的標籤本來就不一致,對不齊就不該有按鈕。
-   佔位而不畫,下軌才不會出現「按了沒反應」的第六種狀態。 */
-.nostop{height:12px}
+   分岔自己跨兩軌,不需要佔位元素;.nostop 只留給「有 pill 但該層不可停」
+   這個罕見情形(實測五個 fixture 都沒發生),讓後面的欄不會錯位到下軌。 */
+.nostop{align-self:start;height:12px}
 
 /* 分岔:同一列局部裂成兩線再合回來(捷運路線圖),不需要符號或圖例。
    分歧槽即使沒有分岔也存在 —— ＋ 必須永遠在,否則沒有分岔時就長不出第一條岔路。 */
-.fork{align-self:center;display:inline-flex;flex-direction:column;gap:3px;
+.fork{grid-row:span 2;align-self:center;display:inline-flex;flex-direction:column;gap:3px;
   border-left:2px solid var(--faint);border-right:2px solid var(--faint);
   border-radius:6px;padding:3px 5px;margin:0 2px}
 .fork.bare{border-color:transparent;padding:3px 1px}
@@ -827,7 +831,7 @@ function renderRow() {
     phase = phase === 'add' ? 'tune' : 'add'; pendingDestructive = null; render();
   });
   fk.appendChild(plus);
-  cells.push([fk, el('nostop')]);
+  cells.push([fk, null]);   /* 分岔跨兩軌,不配下軌元素 */
 
   /* 共同結尾 → 紅框 */
   G.sufNodes.forEach(n => cells.push([pillEl(n), G.stops.includes(n.r) ? stopBtn('r', n.r) : el('nostop')]));
@@ -836,7 +840,7 @@ function renderRow() {
   for (let r = G.rUp - 1; r >= 0; r--)
     cells.push([dimPill(ancAt(o0, r)), G.stops.includes(r) ? stopBtn('r', r) : el('nostop')]);
 
-  for (const [top, bot] of cells) { rowEl.appendChild(top); rowEl.appendChild(bot); }
+  for (const [top, bot] of cells) { rowEl.appendChild(top); if (bot) rowEl.appendChild(bot); }
 }
 
 /* 不坍縮之後第 1 列可能很長,查詢式本體會被推到捲軸外 —— 每次重畫把它捲回來 */
