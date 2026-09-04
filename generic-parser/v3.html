@@ -118,6 +118,10 @@ a.stretch{position:absolute;inset:0;display:block}
 .sect{display:block;font-size:11px;color:var(--faint);margin:11px 0 3px;letter-spacing:.06em}
 .sect.first{margin-top:0}
 .dnote{display:block;font-size:11px;color:var(--faint);margin:0 0 7px}
+.dnote.hid{cursor:pointer;user-select:none}
+.dnote.hid:hover{color:var(--blue)}
+/* 常數列展開後仍標示出來 —— 它為什麼原本被藏起來,要看得出來 */
+.frow.konst .ft{color:var(--mute);font-style:italic}
 .frow{display:flex;gap:7px;align-items:center;padding:2px 3px;border-radius:4px;min-height:21px}
 .frow:hover{background:var(--panel)}
 .frow.dis{opacity:.34}
@@ -1103,7 +1107,7 @@ const ATTRS = ['href', 'src', 'title', 'datetime'];
 const COV_N = 50, PV_N = 10;
 const CIRC = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮'.split('');
 
-let can2d = false, fxTree = null, dlgSample = -1, lastPicked = null;
+let can2d = false, fxTree = null, dlgSample = -1, lastPicked = null, showConst = false;
 const checked = new Set(), cuts = new Set();
 
 /* trim() 只剝 WhiteSpace ∪ LineTerminator,不含 Cf 類零寬字元;而 PUA 圖示既非空白
@@ -1213,12 +1217,20 @@ function cellOf(parts, rec) {
 }
 
 /* coverage 只跑前 50 筆。未取樣時 100 個 leaf × 1000 筆 = 十萬次 evaluate,
-   主執行緒會卡死數秒 —— 而那正是這工具最有價值的場合。擷取本身永遠跑全部。 */
-function covOf(xp) {
+   主執行緒會卡死數秒 —— 而那正是這工具最有價值的場合。擷取本身永遠跑全部。
+   withVal 時順便比對值是否每一列都一樣(常數欄位)—— 合成同一趟,不多跑一次 evaluate。
+   只有第一類與第三類要求值:第二類要讀 innerText,而 blob 的樣板字是它存在的一部分。 */
+function covOf(xp, withVal) {
   const S = matched.slice(0, COV_N);
-  let ok = 0, multi = false;
-  for (const rec of S) { const n = (evalIn(xp, rec) || []).length; if (n) { ok++; if (n > 1) multi = true; } }
-  return { ok, tot: S.length, multi };
+  let ok = 0, multi = false, first = null, same = true;
+  for (let i = 0; i < S.length; i++) {
+    const ns = evalIn(xp, S[i]) || [];
+    if (ns.length) { ok++; if (ns.length > 1) multi = true; }
+    if (!withVal) continue;
+    const v = norm(ns.map(nodeVal).join(' '));
+    if (i === 0) first = v; else if (v !== first) same = false;
+  }
+  return { ok, tot: S.length, multi, konst: !!withVal && S.length >= 2 && same };
 }
 
 const sampleIx = () => {
@@ -1303,17 +1315,33 @@ function renderDlg() {
   if (matched.length > COV_N)
     host.appendChild(el('dnote', '診斷以前 ' + COV_N + ' 筆取樣(共 ' + matched.length + ' 筆);擷取仍為全部'));
 
+  /* 每一列都長一樣 = 樣板字不是資料。自動移除,但留一條可展開的記錄 ——
+     變化只出現在取樣 50 筆之後的欄位會被誤殺,而靜默隱藏資料是最糟的失敗方向。
+     已勾選的常數列一律不藏:收起來會變成看不見卻仍在輸出裏的一欄。 */
+  const isHid = r => r.cov.konst && !showConst && !checked.has(r.key);
+  const nHid = fxTree.rows.filter(isHid).length;
+  if (nHid || showConst) {
+    const n = el('dnote hid', showConst ? '⌄ 收起所有列都相同的內容'
+                                       : '› 已隱藏 ' + nHid + ' 項所有列都相同的內容');
+    n.addEventListener('click', () => { showConst = !showConst; renderDlg(); });
+    host.appendChild(n);
+  }
+
   const cols = colsOf(), cn = new Map();
   cols.forEach((parts, i) => parts.forEach(p => cn.set(p.key, i)));
 
   const NAMES = { 1: '第一類', 2: '第二類', 3: '第三類' };
   let first = true;
   for (const cat of [1, 2, 3]) {
-    const rs = fxTree.rows.filter(r => r.cat === cat);
+    const rs = fxTree.rows.filter(r => r.cat === cat && !isHid(r));
     if (!rs.length) continue;
     host.appendChild(el('sect' + (first ? ' first' : ''), NAMES[cat])); first = false;
     for (const r of rs) {
-      if (cat !== 2) { host.appendChild(rowEl2(r, cn.get(r.key), false)); continue; }
+      if (cat !== 2) {
+        const d = rowEl2(r, cn.get(r.key), false);
+        if (r.cov.konst) { d.classList.add('konst'); d.title = '所有列的內容都相同'; }
+        host.appendChild(d); continue;
+      }
       const anyLeaf = r.leaves.some(l => checked.has(l.key));
       host.appendChild(rowEl2(r, cn.get(r.key), anyLeaf));
       const rootOn = checked.has(r.key);
@@ -1349,8 +1377,9 @@ function buildTree() {
   checked.clear(); cuts.clear();
   fxTree = G ? classify(G.reds[dlgSample]) : null;
   if (!fxTree) return;
+  showConst = false;
   for (const r of fxTree.rows) {
-    r.cov = covOf(r.xp);
+    r.cov = covOf(r.xp, r.cat !== 2);
     if (r.cat === 2) r.leaves.forEach(l => { l.cov = covOf(l.xp); });
   }
 }
