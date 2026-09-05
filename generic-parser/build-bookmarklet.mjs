@@ -30,7 +30,6 @@ const slice = (name, open, close) => {
 };
 const tokens = slice('tokens',      '/*[tokens]*/',      '/*[/tokens]*/');
 const toolCss = slice('tool-css',   '/*[tool-css]*/',    '/*[/tool-css]*/');
-const markup = slice('tool-markup', '<!--[tool-markup]-->', '<!--[/tool-markup]-->');
 const toolJs = slice('tool-js',     '/*[tool-js]*/',     '/*[/tool-js]*/');
 
 /* 色票只手寫 :root 一份(沙盒自己也要用)。自訂屬性會穿過 shadow 邊界繼承,
@@ -42,15 +41,12 @@ if (hostTokens === tokens) throw new Error('[tokens] 區塊不是以 :root 開�
 const css = new CleanCSS({ level: 2 }).minify(hostTokens + '\n' + toolCss);
 if (css.errors.length) throw new Error('CSS 壓縮失敗: ' + css.errors.join('; '));
 
-/* markup 沒有 <pre> 之類的空白敏感節點, 標籤之間的空白直接收掉 */
-const html = markup.replace(/>\s+</g, '><').replace(/\s{2,}/g, ' ').trim();
-
 /* 整包一起壓, 名稱才會一致 —— 分開壓 GPTool 會被 mangle 成呼叫端找不到的名字。
    window.__gp 是屬性存取, 不受 mangle 影響, 兩次點擊靠它接上。 */
 const wrapper = `(function(){
 if (window.__gp) { window.__gp.unmount(); return; }
 ${toolJs}
-window.__gp = GPTool(${JSON.stringify(css.styles)}, ${JSON.stringify(html)},
+window.__gp = GPTool(${JSON.stringify(css.styles)},
                      { onEnd: function(){ window.__gp = null; } });
 })();`;
 
@@ -82,7 +78,6 @@ const row = (k, a, b) => console.log(`  ${k.padEnd(12)} ${String(a).padStart(7)}
 console.log('切出來的四段:');
 row('tokens', tokens.length, hostTokens.length);
 row('tool-css', toolCss.length, css.styles.length);
-row('tool-markup', markup.length, html.length);
 row('tool-js', toolJs.length, out.code.length);
 console.log(`\n  bookmarklet  ${url.length} / ${HARD} 字元  (${pct(url.length)})`);
 
