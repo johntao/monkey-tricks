@@ -162,7 +162,6 @@ a.stretch{position:absolute;inset:0;display:block}
       <option value="card">案例4 · 課程影片卡片 — 練習 2D 擷取</option>
     </select>
   </label>
-  <a class="jump" id="bm-jump" href="#install">↑ 安裝書籤</a>
   <span class="sp"></span>
   <span class="hint" id="phase-hint">關閉中</span>
 </header>
@@ -185,8 +184,6 @@ a.stretch{position:absolute;inset:0;display:block}
     </li>
     <li><b>到任何網頁點一下那個書籤</b> —— 啟用;再點一次(或按 <kbd>Esc</kbd>)關閉。</li>
   </ol>
-  <p class="after">下面是練習場,可以先在這裡試玩再決定要不要裝。
-    少數網站的 CSP 會擋掉書籤指令;iframe 內的內容(例如嵌入的地圖)也抓不到。</p>
 </section>
 
 <section id="guide">
@@ -1764,11 +1761,6 @@ ifold.addEventListener('click', () => {
   const on = !inst.classList.contains('min');
   setFold(on);
   try { localStorage.setItem('gp-install-folded', on ? '1' : '0'); } catch (e) {}
-});
-/* 捲到練習場之後頂欄仍留一條路回安裝區,順手展開 */
-$('#bm-jump').addEventListener('click', () => {
-  setFold(false);
-  try { localStorage.setItem('gp-install-folded', '0'); } catch (e) {}
 });
 
 loadFixture('clean');
